@@ -21,7 +21,7 @@ extension/src/settings.ts   + otherTabs, fileUrls, allowed, blocked
 extension/src/popup.ts      + Advanced section
 extension/src/background.ts + release all on disconnect
 extension/manifest.json     + "debugger"
-tools.ts                    + navigate
+relay/tools.ts              + navigate
 test/policy.test.ts                                               (new)
 ```
 

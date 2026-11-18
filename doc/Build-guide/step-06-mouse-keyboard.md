@@ -11,7 +11,7 @@ extension/src/keys.ts       modifier bits, key lookup, chord splitting: pure   (
 extension/src/input.ts      mouse, keyboard, settle                            (new)
 extension/src/protocol.ts   + argument types for the four tools
 extension/src/tools.ts      + click, type_text, press_key, scroll handlers
-tools.ts                    + the four tools
+relay/tools.ts              + the four tools
 test/keys.test.ts                                                              (new)
 ```
 

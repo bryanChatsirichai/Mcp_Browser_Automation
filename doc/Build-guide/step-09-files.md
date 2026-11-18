@@ -16,15 +16,15 @@ Large binaries sent over the WebSocket would block every other message, and they
 ## Files
 
 ```text
-relay.ts                    + PUT /upload, GET /files, public base URL, upload path checks
-relay-lib.ts                + safe name, is uploadable, absolutize
+relay/relay.ts              + PUT /upload, GET /files, public base URL, upload path checks
+relay/relay-lib.ts          + safe name, is uploadable, absolutize
 extension/src/upload.ts     upload a file, base64 to blob             (new)
 extension/src/files.ts      download, list, PDF, path                 (new)
 extension/src/input.ts      + set files on a file input
 extension/src/tools.ts      + files, upload_file handlers; guard checks download URLs
 extension/src/background.ts + mark the session start on ready, clear it on disconnect
 extension/manifest.json     + "downloads"
-tools.ts                    + files, upload_file; save option on screenshot
+relay/tools.ts              + files, upload_file; save option on screenshot
 test/paths.test.ts                                                    (new)
 ```
 
@@ -109,9 +109,9 @@ The last rule keeps `.env`, `.git` and `.ssh` out of reach even under an allowed
 
 | Name | Where | Takes → returns |
 |---|---|---|
-| safe name | `relay-lib.ts` | raw name → file name |
-| is uploadable | `relay-lib.ts` | real path, roots → boolean (async) |
-| absolutize | `relay-lib.ts` | value, base → the value with `/files/` URLs made absolute |
+| safe name | `relay/relay-lib.ts` | raw name → file name |
+| is uploadable | `relay/relay-lib.ts` | real path, roots → boolean (async) |
+| absolutize | `relay/relay-lib.ts` | value, base → the value with `/files/` URLs made absolute |
 | Relay file | `upload.ts` | `{ url, name, size }` |
 | upload a file | `upload.ts` | relay settings (URL and token), name, blob → relay file |
 

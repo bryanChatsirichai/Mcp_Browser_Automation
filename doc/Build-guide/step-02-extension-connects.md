@@ -12,7 +12,7 @@ extension/src/settings.ts     settings + status storage           (new)
 extension/src/background.ts   connect, hello, ping, backoff
 extension/src/popup.ts        (new)      extension/popup.html     (new)
 extension/manifest.json       add an "action" whose default popup is popup.html
-relay.ts                      WebSocket upgrade on /ext, accept the extension
+relay/relay.ts                WebSocket upgrade on /ext, accept the extension
 ```
 
 ## Sub-tasks

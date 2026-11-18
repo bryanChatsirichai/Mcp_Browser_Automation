@@ -8,7 +8,7 @@
 
 ```text
 package.json   tsconfig.json   .gitignore
-relay.ts                       prints one line and exits
+relay/relay.ts                 prints one line and exits
 test/smoke.test.ts             one passing test
 extension/manifest.json
 extension/tsconfig.json
@@ -29,7 +29,7 @@ Add four scripts:
 
 | Script | Runs | Purpose |
 |---|---|---|
-| `relay` | Node on `relay.ts` | Start the server |
+| `relay` | Node on `relay/relay.ts` | Start the server |
 | `build` | The TypeScript compiler on the extension project | Emit the extension's JavaScript into `extension/dist/` |
 | `check` | The compiler on the root project, then on the extension project with no output | Type-check both halves |
 | `test` | The extension build, then `node --test` on `test/*.test.ts` | Tests of extension logic import the compiled files, so the build must run first |
@@ -50,7 +50,7 @@ Install the dependencies:
 | `module` and `moduleResolution` | `NodeNext` | Node's real resolution rules |
 | `strict` | true | |
 
-List the root files explicitly (`relay.ts`, and later `relay-lib.ts`, `tools.ts`, `stamp.ts`; add each as it appears) and include the `test` folder.
+Include the `relay` folder and the `test` folder, and list root files explicitly (`stamp.ts` from step 12).
 
 **0.3 `extension/tsconfig.json`** for the browser side. This project does emit JavaScript.
 
@@ -71,7 +71,7 @@ The same erasable-syntax rule applies here because the relay will import one ext
 - `permissions`: only `storage` and `alarms` for now. Later steps add theirs.
 - `background`: a service worker at `dist/background.js` with `type` `module`, so it can use `import`.
 
-**0.5 Placeholders.** `relay.ts` logs "relay placeholder". `background.ts` logs "worker started". `test/smoke.test.ts` uses `node:test` and `node:assert/strict` to assert that one plus one is two.
+**0.5 Placeholders.** `relay/relay.ts` logs "relay placeholder". `background.ts` logs "worker started". `test/smoke.test.ts` uses `node:test` and `node:assert/strict` to assert that one plus one is two.
 
 **0.6 `.gitignore`**: `node_modules/`, `extension/dist/`, `files/` (the relay's file store, from step 9).
 
