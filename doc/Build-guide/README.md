@@ -1,16 +1,27 @@
 # Build guide: a browser bridge for MCP, step by step
 
-This guide builds a system like Browser Bridge from an empty folder in 15 steps. Each step adds one capability on top of the previous one and ends with checks that prove it works. It is written for two readers: a developer doing it by hand, and a coding agent doing one step per session.
+This guide takes you from an empty folder to a working "browser bridge" in 15 steps. The bridge lets an AI agent drive your own logged-in Chrome or Edge through the Model Context Protocol (MCP). Each step adds one capability on top of the previous one and ends with checks that prove it works.
 
-The study notes one level up (`doc/01` to `doc/08`) explain **why** the reference is built the way it is. This guide says **what to build, in what order**.
+It is written for two readers: a developer doing it by hand, and a coding agent doing one step per session. You do not need access to any existing implementation. Every step describes **what** to build, **why** it is built that way, and **how to check** it. The code itself is yours to write.
 
 ## What you are building
 
 ```text
 +------------+   HTTP POST /mcp    +----------+   WebSocket /ext    +-----------+  chrome.debugger  +------+
-| MCP client |  ---------------->  | relay.ts |  <----------------  | Extension |  -------------->  | Tabs |
+| MCP client |  ---------------->  |  Relay   |  <----------------  | Extension |  -------------->  | Tabs |
 +------------+                     +----------+                     +-----------+                   +------+
 ```
+
+| Part | What it is | What it does |
+|---|---|---|
+| **MCP client** | Claude Code, Cursor, or any client that speaks MCP over HTTP | Lists tools and calls them on the model's behalf |
+| **Relay** | A small Node.js server, bound to `127.0.0.1` | Speaks MCP to the client. Forwards each tool call to the extension and returns its answer |
+| **Extension** | A Chrome Manifest V3 extension | Connects out to the relay and drives tabs with the Chrome DevTools Protocol (CDP) through the `chrome.debugger` API |
+
+Two design choices shape everything that follows:
+
+- **The extension dials out to the relay.** A browser extension cannot run a server, but it can open a WebSocket. So the relay listens, and the extension connects to it.
+- **The relay is stateless toward the MCP client.** It keeps no MCP session. The browser holds all the state that matters: tabs, element ids, recordings. A stateless relay can restart, or sit behind a tunnel, without breaking the client.
 
 ## The steps
 
@@ -55,29 +66,21 @@ The study notes one level up (`doc/01` to `doc/08`) explain **why** the referenc
 
 You have a usable product after step 8. Steps 9 to 13 are independent of each other, except that step 13 needs the upload route from step 9.
 
-## Tool names
+## Tool design
 
-The guide uses its own tool names, one tool per action. Write your own descriptions for them. The reference instead mirrors another product's tool set and packs several actions into one `computer` tool; do not copy those descriptions into a project you publish unless you know you may.
+The guide gives one tool per action, with short names (`click`, `type_text`, `screenshot`). Write your own descriptions for each tool. A good description says what the tool does, what each argument means and its unit, and what the model should do first (for example "call `tabs_list` before any other tool").
 
-| Guide tool | Reference equivalent |
-|---|---|
-| `tabs_list`, `tab_open`, `tab_close` | `tabs_context_mcp`, `tabs_create_mcp`, `tabs_close_mcp` |
-| `navigate` | `navigate` |
-| `screenshot` | `computer` actions `screenshot`, `zoom` |
-| `click`, `type_text`, `press_key`, `scroll` | `computer` actions `left_click` (and the other clicks, `hover`, `left_click_drag`), `type`, `key`, `scroll` |
-| `read_page`, `find`, `page_text` | `read_page`, `find`, `get_page_text` |
-| `run_js`, `set_field`, `batch` | `javascript_tool`, `form_input`, `browser_batch` |
-| `upload_file`, `files`, `inspect`, `record` | `file_upload`, `files`, `inspect`, `record` |
+You may prefer fewer, larger tools: for example, one `computer` tool whose `action` argument selects click, type, scroll or screenshot. That works too. Fewer tools mean a shorter tool list for the model; more tools mean simpler schemas. Pick one style and keep to it.
 
-## Target layout
+## Suggested layout
 
-File names match the reference, so every "Reference" pointer in a step maps to a real file you can read.
+The file names are suggestions; the step files use them so that "add X to `cdp.ts`" is unambiguous.
 
 ```text
 package.json  tsconfig.json  .gitignore
 relay.ts                 server: HTTP, WebSocket, MCP                          steps 1, 2, 3, 9, 12
 relay-lib.ts             pure helpers the relay uses (testable)                steps 1, 3, 9, 12
-tools.ts                 MCP tool definitions (reference: schemas.ts)          every tool step
+tools.ts                 MCP tool definitions (name, description, schema)      every tool step
 stamp.ts                 build step for the popup                              step 12
 test/*.test.ts           node --test                                           every step
 extension/
@@ -96,17 +99,17 @@ extension/
     keys.ts              key and modifier tables (pure)                        step 6
     input.ts             mouse, keyboard, form controls                        steps 6, 8, 9
     query.ts             find: parse and score (pure)                          step 7
-    snapshot.ts          accessibility tree, refs, JS helpers                  steps 5, 7
+    snapshot.ts          accessibility tree, refs, page helpers                steps 5, 7
     files.ts  upload.ts  downloads, PDF, PUT to the relay                      step 9
     inspect.ts           buffers, run_js                                       steps 8, 10
     record.ts  offscreen.ts  overlay.ts                                        step 13
     popup.ts             settings UI                                           steps 2, 4, 12
 ```
 
-Two deliberate differences from the reference, both for testability. The reference has no tests; this guide adds them as you go.
+Two rules keep this testable:
 
-- **Pure relay functions live in `relay-lib.ts`.** Importing `relay.ts` starts a server, so nothing in it can be unit-tested.
-- **Pure extension logic lives in modules that never touch `chrome`**: `policy.ts` (as in the reference), plus `frame.ts`, `keys.ts` and `query.ts`, which the reference keeps inside `capture.ts`, `input.ts` and `snapshot.ts`. A module such as `cdp.ts` registers `chrome.*` listeners when it loads, so a test that imports it, or anything that imports it, fails under Node with "chrome is not defined".
+- **Pure relay functions live in `relay-lib.ts`.** Importing `relay.ts` starts a server, so nothing inside it can be unit-tested.
+- **Pure extension logic lives in modules that never touch `chrome`**: `policy.ts`, `frame.ts`, `keys.ts`, `query.ts`. A module such as `cdp.ts` registers `chrome.*` listeners when it loads, so a test that imports it, or imports anything that imports it, fails under Node with "chrome is not defined".
 
 ## How each step file is laid out
 
@@ -115,13 +118,24 @@ Two deliberate differences from the reference, both for testability. The referen
 | **Goal** | One sentence |
 | **Builds on** | What must already work |
 | **Files** | Created or changed in this step |
-| **Sub-tasks** | Numbered `N.1`, `N.2`... in the order to do them. Each says what to build, the detail that is easy to get wrong, and where the reference does it. |
-| **Contracts** | The types and signatures other steps depend on. Keep these exact. |
+| **Sub-tasks** | Numbered `N.1`, `N.2`... in the order to do them. Each says what to build, why, and the detail that is easy to get wrong. |
+| **Interfaces** | The functions and data shapes other steps depend on. Keep their names and meaning; the exact syntax is yours. |
 | **Done when** | Checks. `[auto]` can be run from a shell. `[browser]` needs a person or a browser-capable agent to look. |
 | **Pitfalls** | Mistakes this step invites |
-| **Carry forward** | Invariants that later steps rely on |
+| **Carry forward** | Rules that later steps rely on |
 
-Code blocks are **sketches adapted from the reference**, shortened to show the shape. Treat them as a starting point to type-check and run, not as finished code.
+The guide contains no implementation code. Where order or arithmetic matters, it gives numbered steps, a decision table or a worked example instead. Blocks marked `sh` are commands to run, not code to copy into your project.
+
+## Background you will need
+
+You do not need to know these before starting, but each step assumes you can look them up:
+
+| Topic | Used from | Where to read |
+|---|---|---|
+| MCP: JSON-RPC methods `initialize`, `tools/list`, `tools/call`; the Streamable HTTP transport | Step 1 | The MCP specification and the official TypeScript SDK's README (`@modelcontextprotocol/sdk`) |
+| Chrome extension Manifest V3: service workers, `chrome.storage`, `chrome.alarms`, `chrome.tabs`, `chrome.tabGroups` | Step 0 | Chrome Extensions documentation |
+| `chrome.debugger` and the Chrome DevTools Protocol domains `Page`, `Runtime`, `Input`, `DOM`, `Accessibility`, `Network`, `Target` | Step 4 | Chrome DevTools Protocol viewer (chromedevtools.github.io/devtools-protocol) |
+| Node's built-in test runner (`node --test`) and type stripping (running `.ts` directly) | Step 0 | Node.js documentation |
 
 ## Rules for every step
 
@@ -129,10 +143,10 @@ For a developer these are habits; for an agent they are constraints.
 
 1. **One step per change set.** Finish a step's "Done when" list before starting the next. Do not start work from a later step early.
 2. **`npm run check` and `npm test` pass at the end of every step.** No exceptions, no skipped tests.
-3. **Keep the contracts.** If a contract must change, change it in `protocol.ts` first so both halves fail to compile until they agree.
-4. **Never weaken a guard to make a check pass.** If a "Done when" item fails because a guard blocks it, the test is wrong or the guard has a bug: find out which.
-5. **New pure logic gets a test in the same step**, and lives in a module with no `chrome` access so the test can import it. Parsing, scoring, path and URL rules, text shaping.
-6. **Errors are instructions.** Every `ToolError` message says what happened and what the model should do next.
+3. **Keep the interfaces.** If one must change, change the shared wire types (`protocol.ts`) first, so both halves fail to compile until they agree.
+4. **Never weaken a guard to make a check pass.** If a "Done when" item fails because a guard blocks it, either the check is wrong or the guard has a bug: find out which.
+5. **New pure logic gets a test in the same step**, and lives in a module with no `chrome` access so the test can import it. This covers parsing, scoring, path and URL rules, and text shaping.
+6. **Errors are instructions.** Every error message says what happened and what the model should do next.
 7. **Bound every output.** No tool returns unlimited text.
 8. **Report honestly.** State which checks were run and their output, and which `[browser]` checks were not run.
 
@@ -140,7 +154,7 @@ For a developer these are habits; for an agent they are constraints.
 
 ```text
  1. Read this README and the step file. Read the "Carry forward" of every earlier step.
- 2. Read the files the step lists under "Reference" before writing code.
+ 2. Read the code you already wrote that the step's "Files" list touches.
  3. Do the sub-tasks in order. After each: npm run check.
  4. Run every [auto] check. Paste the real output in your report.
  5. For [browser] checks: run them if you can drive a browser; otherwise list them as
@@ -150,19 +164,10 @@ For a developer these are habits; for an agent they are constraints.
 
 ## What has and has not been verified
 
-This guide is derived from reading the reference implementation, which type-checks. The system described here was **not built from this guide**, so the steps as a sequence are untested, and no `[browser]` check was run. The following were run against the reference relay on Node 24.22.1 and behave as the step files say:
-
-- **Step 1:** the three `curl` requests and the shape of their responses; 403 for a forged `Host`, a web `Origin` and `X-Forwarded-For`; 405 for `GET /mcp`; 404 for an unknown path; 406 when only one `Accept` type is sent.
-- **Step 3:** a `tools/call` with no extension connected returns the "No browser connected" error at once.
-- **Step 4:** the policy verdicts (through the compiled `checkUrl`).
-- **Step 9:** the upload with `..%2F` in its name is stored as a plain basename and can be fetched back; the three response headers on a stored HTML file; 404 for a malformed id and for a missing file.
-- **Step 12:** 401 with no or a wrong token, success with the right one; `?token=` accepted on `/files` and refused on `/mcp`.
-- **Tests:** `node --test "test/*.test.ts"` runs a TypeScript test that imports a compiled, chrome-free extension module.
-
-Every "Reference" pointer was checked to exist and to land on the code named.
+The design, numbers and checks in this guide come from a working implementation. The **sequence** of steps has not been followed end to end to build a new system, so a step may leave a gap that the next one has to fill. If you find one, fix the step file too.
 
 ## Prerequisites
 
-- Node 22.18 or newer (the relay runs `.ts` files directly).
+- Node 22.18 or newer (the relay runs `.ts` files directly through type stripping).
 - Chrome or Edge 125 or newer.
 - An MCP client for end-to-end checks (Claude Code, Cursor). `curl` covers everything up to step 3.

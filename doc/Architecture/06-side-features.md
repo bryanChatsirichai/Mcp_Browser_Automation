@@ -164,7 +164,7 @@ When a tab is being driven, the page shows a pulsing yellow border, a fake curso
 ### How it is built
 
 - One self-contained function, `overlayPage(cmd)`, injected as a string through `Runtime.evaluate` (`overlay.ts:171-177`).
-- It keeps its state on `window` under `Symbol.for('browser-bridge.overlay')`, so repeated injections update the same overlay instead of stacking new ones.
+- It keeps its state on `window` under `Symbol.for('rakuten-hashi.overlay')`, so repeated injections update the same overlay instead of stacking new ones.
 - The UI lives in a **closed shadow root** on a host element with `all: initial` and maximum `z-index`, so page CSS cannot restyle it and it cannot leak styles into the page.
 - **Everything is created through DOM and CSSOM calls** (`createElement`, `CSSStyleSheet.replaceSync`, `adoptedStyleSheets`), never `innerHTML` or inline `<style>`, because a page's Content Security Policy and Trusted Types would block those (`overlay.ts:17-19`).
 - `pointer-events: none` everywhere, so it never intercepts a click.

@@ -1,10 +1,10 @@
-# Browser Bridge: study notes
+# Rakuten Hashi: study notes
 
 These notes explain how this repository is set up, how it is structured, and how its logic works, so you can learn from it and build your own. They were written by reading every source file at commit `8226603` (version 0.2.0). They describe the code, not the npm packages underneath it.
 
 ## The project in one paragraph
 
-Browser Bridge turns your own logged-in Chrome or Edge into an MCP server. An AI client (Claude Code, Cursor) sends tool calls such as "click here" or "read this page" over HTTP. A small Node process, the **relay**, forwards each call over a WebSocket to a **browser extension**. The extension carries it out on a real tab through the Chrome DevTools Protocol (CDP) and sends the result back the same way. There is no LLM and no API key inside: the project is only the bridge.
+Rakuten Hashi turns your own logged-in Chrome or Edge into an MCP server. An AI client (Claude Code, Cursor) sends tool calls such as "click here" or "read this page" over HTTP. A small Node process, the **relay**, forwards each call over a WebSocket to a **browser extension**. The extension carries it out on a real tab through the Chrome DevTools Protocol (CDP) and sends the result back the same way. There is no LLM and no API key inside: the project is only the bridge.
 
 ```text
 +------------+   HTTP POST /mcp    +----------+   WebSocket /ext    +-----------+  chrome.debugger  +------+

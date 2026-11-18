@@ -2,13 +2,13 @@
 
 **Goal.** The model can read a tab's console output, errors, network requests, cookies and storage, and a JavaScript dialog can never freeze the session.
 
-**Builds on.** Step 4 (the `onAttach` / `onEvent` hooks) and step 8 (`inspect.ts` exists). Independent of step 9.
+**Builds on.** Step 4 (the on-attach and on-event hooks) and step 8 (`inspect.ts` exists). Independent of step 9.
 
 ## Files
 
 ```text
-extension/src/inspect.ts    + buffers, event recorder, inspect()
-extension/src/protocol.ts   + InspectArgs
+extension/src/inspect.ts    + buffers, event recorder, the inspect tool
+extension/src/protocol.ts   + inspect arguments
 extension/src/tools.ts      + inspect handler
 tools.ts                    + inspect
 test/ring.test.ts                                                    (new)
@@ -16,61 +16,46 @@ test/ring.test.ts                                                    (new)
 
 ## Sub-tasks
 
-**10.1 Per-tab ring buffers.** `Map<tabId, { console, errors, network }>`, each an array capped at 500 entries (push, then shift when over). Delete a tab's buffers in `chrome.tabs.onRemoved`.
+**10.1 Per-tab ring buffers.** A map from tab id to three lists: console, errors, network. Cap each at 500 entries: add the new entry, and drop the oldest if the list is over the cap. Delete a tab's buffers when the tab closes (`chrome.tabs.onRemoved`).
 
-**10.2 Enable the domains on attach.**
+**10.2 Enable the domains on attach.** Register an on-attach listener (step 4) that enables the CDP `Network` and `Log` domains. `Page` and `Runtime` are already enabled by the attach itself.
 
-```ts
-onAttach(async (target) => {
-  await Promise.all([send(target, 'Network.enable', {}), send(target, 'Log.enable')]);
-});
-```
-
-**10.3 Record events** with one `onEvent` listener:
+**10.3 Record events** with one on-event listener:
 
 | CDP event | Goes to | Keep |
 |---|---|---|
-| `Runtime.consoleAPICalled` | `console`; also `errors` when type is `error` | level, arguments joined as text, 1,000 characters |
-| `Log.entryAdded` | `console`; also `errors` when level is `error` | level, text, url |
-| `Runtime.exceptionThrown` | `errors` | description, url, line |
-| `Network.requestWillBeSent` | `network` (new entry) | requestId, method, url (500 chars), type |
-| `Network.responseReceived` | update the entry | status, MIME, declared length |
+| `Runtime.consoleAPICalled` | console; also errors when its type is `error` | level, the arguments joined as text, up to 1,000 characters |
+| `Log.entryAdded` | console; also errors when its level is `error` | level, text, URL |
+| `Runtime.exceptionThrown` | errors | description, URL, line |
+| `Network.requestWillBeSent` | network (new entry) | request id, method, URL (500 characters), resource type |
+| `Network.responseReceived` | update the entry | status, MIME type, declared length |
 | `Network.loadingFinished` | update the entry | transferred size, falling back to the declared length for cached responses |
 | `Network.loadingFailed` | update the entry | error text |
 
-Find the entry to update with `findLast` on `requestId`: ids can repeat across redirects.
+To find the entry to update, search from the **end** of the list for the request id: one id repeats across the hops of a redirect, and the newest hop is the one being updated.
 
-**10.4 Dialogs.** On `Page.javascriptDialogOpening`, immediately send `Page.handleJavaScriptDialog { accept: true, promptText: dialog.defaultPrompt }` and push a `console` entry with level `dialog` and the message. An open `alert`, `confirm` or `prompt` blocks the page and every later CDP call, so this cannot wait for the model.
+**10.4 Dialogs.** On `Page.javascriptDialogOpening`, immediately answer with `Page.handleJavaScriptDialog`: accept it, and for a prompt use its default text. Then add a console entry with level `dialog` and the dialog's message, so the model can see what happened. An open `alert`, `confirm` or `prompt` blocks the page and every later CDP call to it, so this cannot wait for the model.
 
-**10.5 The `inspect` tool.** Returns plain JSON (not content), so the relay stringifies and fences it.
+**10.5 The `inspect` tool.** It returns plain data (not content parts), so the relay converts it to JSON and fences it. Arguments: `tabId`, `mode`, and the optional filters below.
 
 | `mode` | Returns |
 |---|---|
-| `console`, `errors` | The newest `limit` entries (default 50), `total`, and `truncated: true` when more exist |
-| `network` | The same, after filtering by `url` substring, `method`, `status` |
-| `network` + `bodyOf: <requestId>` | One body via `Network.getResponseBody`, capped at 25,000 characters, with `base64` flagged |
-| `cookies` | `Network.getCookies` for the tab's URL; cut each value to 200 characters |
-| `storage` | `localStorage` and `sessionStorage` read by a page function; cut each value to 500 characters |
+| `console`, `errors` | The newest `limit` entries (default 50), the `total`, and `truncated: true` when there are more |
+| `network` | The same, after filtering by a `url` substring, `method` and `status` |
+| `network` with `bodyOf` set to a request id | One response body, from `Network.getResponseBody`, capped at 25,000 characters, with a flag saying whether it is base64 |
+| `cookies` | `Network.getCookies` for the tab's URL, each value cut to 200 characters |
+| `storage` | `localStorage` and `sessionStorage`, read by a page function, each value cut to 500 characters |
 
-If the tab was not attached before this call, add a note: "Recording started with this call. Reload the tab to capture its page load."
+If the tab was not attached before this call, recording only starts now. Add a note: "Recording started with this call. Reload the tab to capture its page load."
 
-**10.6 Tests.** Extract the ring `push` and the `recent(entries, limit)` shaping into a chrome-free module and test: the cap, the order, the `truncated` flag.
+**10.6 Tests.** Move the ring buffer's "add" and the "newest N with total and truncated flag" shaping into a chrome-free module and test them: the cap, the order, and the truncated flag.
 
-Reference: `inspect.ts:1-227`.
+## Interfaces
 
-## Contracts
-
-```ts
-// inspect.ts
-export function inspect(tabId: number, args: InspectArgs): Promise<unknown>;
-
-// protocol.ts
-export interface InspectArgs {
-  mode: 'console' | 'network' | 'errors' | 'cookies' | 'storage';
-  tabId: number;
-  url?: string; method?: string; status?: number; bodyOf?: string; limit?: number;
-}
-```
+| Name | Where | Shape |
+|---|---|---|
+| inspect | `inspect.ts` | tab id, arguments → plain data |
+| Inspect arguments | `protocol.ts` | `mode` (console, network, errors, cookies, storage), `tabId`; optional `url`, `method`, `status`, `bodyOf`, `limit` |
 
 ## Done when
 
@@ -87,8 +72,8 @@ export interface InspectArgs {
 - **Unbounded buffers** grow until the worker is killed. Cap them.
 - **Returning bodies in the list** floods the model's context. List metadata; fetch one body by id.
 - **Auto-accepting means every `confirm()` is answered OK**, including "Delete this?". This is a real trade-off against freezing. State it in the tool description, and consider a setting to dismiss instead.
-- **`cookies` includes `httpOnly` cookies.** Together with `run_js` this gives a hijacked model the user's session on any allowed site. The allowed list is the control.
+- **`cookies` includes `httpOnly` cookies.** Together with `run_js`, this gives a hijacked model the user's session on any allowed site. The allowed list is the control.
 
 ## Carry forward
 
-- Step 11 makes `onAttach` run for iframe sessions too. Store the `sessionId` on each network entry now (it is `undefined` until then), because `Network.getResponseBody` must be sent to the session that saw the request.
+- Step 11 makes the on-attach hook run for iframe sessions too. Store the session id on each network entry now (it is empty until then), because `Network.getResponseBody` must be sent to the session that saw the request.
