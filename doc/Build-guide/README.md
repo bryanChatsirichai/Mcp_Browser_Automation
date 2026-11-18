@@ -1,6 +1,6 @@
 # Build guide: a browser bridge for MCP, step by step
 
-This guide builds a system like Rakuten Hashi from an empty folder in 15 steps. Each step adds one capability on top of the previous one and ends with checks that prove it works. It is written for two readers: a developer doing it by hand, and a coding agent doing one step per session.
+This guide builds a system like Browser Bridge from an empty folder in 15 steps. Each step adds one capability on top of the previous one and ends with checks that prove it works. It is written for two readers: a developer doing it by hand, and a coding agent doing one step per session.
 
 The study notes one level up (`doc/01` to `doc/08`) explain **why** the reference is built the way it is. This guide says **what to build, in what order**.
 
