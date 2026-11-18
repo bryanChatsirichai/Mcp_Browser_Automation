@@ -1,0 +1,28 @@
+{
+  "name": "browser-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "relay": "node relay/relay.ts",
+    "build": "tsc -p extension && node stamp.ts",
+    "check": "tsc -p extension && tsc -p .",
+    "test": "tsc -p extension && node --test \"test/*.test.ts\""
+  },
+  "dependencies": {
+    "@modelcontextprotocol/node": "^2.1.2",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "ws": "^8.23.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.7",
+    "@types/node": "^24.19.2",
+    "@types/ws": "^8.18.2",
+    "devtools-protocol": "^0.0.1747637",
+    "typescript": "^7.0.2"
+  }
+}

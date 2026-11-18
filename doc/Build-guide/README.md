@@ -78,9 +78,9 @@ The file names are suggestions; the step files use them so that "add X to `cdp.t
 
 ```text
 package.json  tsconfig.json  .gitignore
-relay.ts                 server: HTTP, WebSocket, MCP                          steps 1, 2, 3, 9, 12
-relay-lib.ts             pure helpers the relay uses (testable)                steps 1, 3, 9, 12
-tools.ts                 MCP tool definitions (name, description, schema)      every tool step
+relay/relay.ts           server: HTTP, WebSocket, MCP                          steps 1, 2, 3, 9, 12
+relay/relay-lib.ts       pure helpers the relay uses (testable)                steps 1, 3, 9, 12
+relay/tools.ts           MCP tool definitions (name, description, schema)      every tool step
 stamp.ts                 build step for the popup                              step 12
 test/*.test.ts           node --test                                           every step
 extension/
@@ -108,7 +108,7 @@ extension/
 
 Two rules keep this testable:
 
-- **Pure relay functions live in `relay-lib.ts`.** Importing `relay.ts` starts a server, so nothing inside it can be unit-tested.
+- **Pure relay functions live in `relay/relay-lib.ts`.** Importing `relay/relay.ts` starts a server, so nothing inside it can be unit-tested.
 - **Pure extension logic lives in modules that never touch `chrome`**: `policy.ts`, `frame.ts`, `keys.ts`, `query.ts`. A module such as `cdp.ts` registers `chrome.*` listeners when it loads, so a test that imports it, or imports anything that imports it, fails under Node with "chrome is not defined".
 
 ## How each step file is laid out
