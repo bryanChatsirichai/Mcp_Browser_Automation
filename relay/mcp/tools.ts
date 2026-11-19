@@ -1,9 +1,9 @@
-// MCP tool definitions. Definitions only: the logic lives in the extension (../extension/src/tools.ts).
+// MCP tool definitions. Definitions only: the logic lives in the extension (extension/src/tools.ts).
 // Each Zod schema is both the JSON Schema served by tools/list and the validator the SDK runs
 // on every call, so a malformed call is rejected here instead of reaching the browser.
 
 import * as z from 'zod';
-import type { ToolName } from '../extension/src/protocol.ts';
+import type { ToolName } from '../../extension/src/protocol.ts';
 
 export interface ToolDefinition {
   name: ToolName;

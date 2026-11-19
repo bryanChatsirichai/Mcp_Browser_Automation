@@ -1,4 +1,4 @@
-// The extension half of each tool. relay/tools.ts holds the name, description and argument
+// The extension half of each tool. relay/mcp/tools.ts holds the name, description and argument
 // schema, and validates the arguments before they reach these handlers.
 
 import { ToolError } from './errors.js';

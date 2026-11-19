@@ -35,9 +35,10 @@ export function browserLaunchCommand(configured: string | undefined, platform: N
 }
 
 const FENCE = 'untrusted-browser-content';
-// Characters a model reads but a person reviewing the page cannot see: Unicode tag
-// characters and bidirectional overrides and isolates.
-const INVISIBLE = /[\u{E0000}-\u{E007F}‪-‮⁦-⁩]/gu;
+// Characters a model reads but a person reviewing the page cannot see: Unicode tag characters
+// (U+E0000-E007F), bidirectional embeddings and overrides (U+202A-202E) and isolates (U+2066-2069).
+// Written as escapes because the literal characters are themselves invisible in an editor.
+const INVISIBLE = /[\u{E0000}-\u{E007F}\u{202A}-\u{202E}\u{2066}-\u{2069}]/gu;
 
 /**
  * Wraps text that came from web pages so the model can tell it is data, not instructions.
