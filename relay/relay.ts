@@ -93,8 +93,8 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
 
 /**
  * Runs when a client asks to switch the connection to WebSocket (the extension, on /ext).
- * The upgrade is refused before a socket exists unless it passes the same local-only gate as
- * every HTTP route.
+ * Only the extension gets here. Node sends a request with an `Upgrade`
+ * header to this 'upgrade' event instead of to handleRequest, so it never reaches route().
  */
 function handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
   log(`handleUpgrade: ${req.method} ${pathOf(req)}`);
@@ -135,6 +135,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   } else if (req.method !== 'POST') {
     json(res, 405, { error: 'Method not allowed: use POST /mcp.' }, { allow: 'POST' });
   } else {
+    // Only MCP requests from the client (Claude Code) get here. 
     log(`route: POST /mcp → handleMcp`);
     await handleMcp(req, res);
   }
