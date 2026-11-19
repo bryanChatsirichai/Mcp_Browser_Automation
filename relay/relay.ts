@@ -29,6 +29,13 @@
 //   port busy            → handleServerError → exit(1)
 //   Ctrl+C               → shutdown → exit(0)
 
+// Claude Code ──── MCP over HTTP ────► relay ◄──── WebSocket ──── Chrome extension
+//            POST /mcp                         ws://…/ext
+//            handleRequest                     handleUpgrade
+//            mcp/server.ts                     browser/socket.ts
+
+
+
 
 import http from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
