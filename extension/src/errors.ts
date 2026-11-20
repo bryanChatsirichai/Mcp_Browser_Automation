@@ -1,4 +1,4 @@
-import type { ErrorBody } from './protocol.js';
+import type { ErrorBody } from "./protocol.js";
 
 /** An expected failure, reported to the model as `code` plus a message that says what to do next. */
 export class ToolError extends Error {
@@ -6,9 +6,13 @@ export class ToolError extends Error {
   code: string;
   extra: Record<string, unknown>;
 
-  constructor(code: string, message: string, extra: Record<string, unknown> = {}) {
+  constructor(
+    code: string,
+    message: string,
+    extra: Record<string, unknown> = {},
+  ) {
     super(message);
-    this.name = 'ToolError';
+    this.name = "ToolError";
     this.code = code;
     this.extra = extra;
   }
@@ -16,6 +20,10 @@ export class ToolError extends Error {
 
 /** Any thrown value as a wire error body. Unexpected errors keep their message under code ERROR. */
 export function toErrorBody(error: unknown): ErrorBody {
-  if (error instanceof ToolError) return { ...error.extra, code: error.code, message: error.message };
-  return { code: 'ERROR', message: error instanceof Error ? error.message : String(error) };
+  if (error instanceof ToolError)
+    return { ...error.extra, code: error.code, message: error.message };
+  return {
+    code: "ERROR",
+    message: error instanceof Error ? error.message : String(error),
+  };
 }

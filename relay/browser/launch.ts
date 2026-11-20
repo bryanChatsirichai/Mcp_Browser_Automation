@@ -45,9 +45,9 @@ export function notifyExtensionConnected(): void {
 
 function launchBrowser(): Promise<void> {
   lastLaunchAt = Date.now();
-  log(`no browser connected; starting it with: ${BROWSER_LAUNCH}`);
+  log(`[launchBrowser:] no browser connected; starting it with: ${BROWSER_LAUNCH}`);
   const child = spawn(BROWSER_LAUNCH, { shell: true, detached: true, stdio: 'ignore', windowsHide: true });
-  child.on('error', (error) => log(`browser launch failed: ${error.message}`));
+  child.on('error', (error) => log(`[launchBrowser:] browser launch failed: ${error.message}`));
   child.unref(); // the relay must not wait for the browser to exit
 
   return new Promise((resolve) => {
@@ -57,8 +57,8 @@ function launchBrowser(): Promise<void> {
       endLaunchWait = null;
       const waited = Date.now() - lastLaunchAt;
       log(connected
-        ? `browser launch: extension connected after ${waited}ms`
-        : `browser launch: no extension after ${waited}ms; giving up`);
+        ? `[launchBrowser:] extension connected after ${waited}ms`
+        : `[launchBrowser:] no extension after ${waited}ms; giving up`);
       resolve();
     };
     const timer = setTimeout(() => finish(false), LAUNCH_WAIT_MS);

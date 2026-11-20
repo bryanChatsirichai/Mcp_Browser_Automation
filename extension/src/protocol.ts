@@ -8,20 +8,40 @@
 //   relay     → call {id,tool}   extension → result {id, ok, data | error}   (one result per call id)
 
 /** Every tool the extension implements. Adding a name here without a handler is a compile error. */
-export type ToolName = 'tabs_list' | 'tab_open';
+export type ToolName = "tabs_list" | "tab_open";
 
-export interface Hello { type: 'hello'; token: string; browser: string; version: string }
-export interface Ready { type: 'ready' }
-export interface Ping { type: 'ping' }
-export interface Pong { type: 'pong' }
-export interface Call { type: 'call'; id: string; tool: ToolName; args: Record<string, unknown> }
+export interface Hello {
+  type: "hello";
+  token: string;
+  browser: string;
+  version: string;
+}
+export interface Ready {
+  type: "ready";
+}
+export interface Ping {
+  type: "ping";
+}
+export interface Pong {
+  type: "pong";
+}
+export interface Call {
+  type: "call";
+  id: string;
+  tool: ToolName;
+  args: Record<string, unknown>;
+}
 
 /** `code` is a short upper-case id such as NO_TAB; `message` says what the model should do next. */
-export interface ErrorBody { code: string; message: string; [extra: string]: unknown }
+export interface ErrorBody {
+  code: string;
+  message: string;
+  [extra: string]: unknown;
+}
 
 export type Result =
-  | { type: 'result'; id: string; ok: true; data: unknown }
-  | { type: 'result'; id: string; ok: false; error: ErrorBody };
+  | { type: "result"; id: string; ok: true; data: unknown }
+  | { type: "result"; id: string; ok: false; error: ErrorBody };
 
 export type ToRelay = Hello | Ping | Pong | Result;
 export type ToExtension = Ready | Ping | Pong | Call;
@@ -35,4 +55,6 @@ export const CLOSE_UNAUTHORIZED = 4401;
 /** Another browser connected and took over the relay. The extension must not retry. */
 export const CLOSE_REPLACED = 4409;
 
-export interface TabsListArgs { createIfEmpty?: boolean }
+export interface TabsListArgs {
+  createIfEmpty?: boolean;
+}

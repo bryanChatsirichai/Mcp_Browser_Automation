@@ -54,7 +54,7 @@ export function sendCall(socket: WebSocket, id: string, tool: ToolName, args: Re
  */
 export function settleFromResult(socket: WebSocket, result: Result): void {
   if (pendingCalls.get(result.id)?.socket !== socket) {
-    log(`call ${shortId(result.id)}: result ignored (already settled, unknown id, or from another socket)`);
+    log(`[settleFromResult:] call ${shortId(result.id)}: result ignored (already settled, unknown id, or from another socket)`);
     return;
   }
   settleCall(result.id, result.ok
