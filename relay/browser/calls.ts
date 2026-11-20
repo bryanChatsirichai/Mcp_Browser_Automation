@@ -1,5 +1,10 @@
-// Calls sent to the extension and waiting for their result. Each call settles exactly once:
-// by its result frame, by CALL_TIMEOUT_MS, or by its socket closing.
+// Calls sent to the extension and still waiting for their result.
+//
+// Every call is finished exactly once, by whichever of these happens first:
+//   its result arrives      → finishCallWithResult  (from socket.ts)
+//   CALL_TIMEOUT_MS passes  → the timer set in sendCall
+//   its socket closes       → failCallsOnSocket     (from socket.ts)
+// All three go through finishCall, which removes the call so the others find nothing to do.
 
 import type { WebSocket } from "ws";
 import type { Call, Result, ToolName } from "../../extension/src/protocol.ts";
@@ -21,21 +26,22 @@ export class ExtensionError extends Error {
   }
 }
 
-type Outcome =
+type CallOutcome =
   { ok: true; data: unknown } | { ok: false; error: ExtensionError };
 
 interface PendingCall {
   /** The socket the call went to; only it may answer, and its closing fails the call. */
   socket: WebSocket;
-  /** Resolves or rejects the promise sendCall returned. Only settleCall invokes it. */
-  deliver: (outcome: Outcome) => void;
-  timer: ReturnType<typeof setTimeout>;
+  /** Fails the call with TIMEOUT after CALL_TIMEOUT_MS. */
+  timeoutTimer: ReturnType<typeof setTimeout>;
+  /** Resolves or rejects the promise sendCall returned. Only finishCall runs it. */
+  finish: (outcome: CallOutcome) => void;
 }
 
-/** Keyed by call id. */
+/** Calls waiting for a result, keyed by call id. */
 const pendingCalls = new Map<string, PendingCall>();
 
-/** Sends one call on `socket` and resolves with its data, or rejects with an ExtensionError. */
+/** Sends one call on `socket`; resolves with its data, or rejects with an ExtensionError. */
 export function sendCall(
   socket: WebSocket,
   id: string,
@@ -43,22 +49,14 @@ export function sendCall(
   args: Record<string, unknown>,
 ): Promise<unknown> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () =>
-        settleCall(id, {
-          ok: false,
-          error: new ExtensionError(
-            "TIMEOUT",
-            `The browser did not answer within ${CALL_TIMEOUT_MS / 1000}s. Its effects may still land; check before retrying.`,
-            false,
-          ),
-        }),
+    const timeoutTimer = setTimeout(
+      () => finishCall(id, { ok: false, error: timeoutError() }),
       CALL_TIMEOUT_MS,
     );
     pendingCalls.set(id, {
       socket,
-      timer,
-      deliver: (outcome) =>
+      timeoutTimer,
+      finish: (outcome) =>
         outcome.ok ? resolve(outcome.data) : reject(outcome.error),
     });
 
@@ -68,56 +66,60 @@ export function sendCall(
 }
 
 /**
- * Settles the call a result frame answers. A result is ignored, and logged, when its call already
- * settled (for example after a timeout), is unknown, or was sent on a different socket.
+ * Finishes the call a result frame answers. The result is ignored, and logged, when its call
+ * already finished (for example after a timeout), is unknown, or was sent on another socket.
  */
-export function settleFromResult(socket: WebSocket, result: Result): void {
+export function finishCallWithResult(socket: WebSocket, result: Result): void {
   if (pendingCalls.get(result.id)?.socket !== socket) {
     log(
-      `[settleFromResult:] call ${shortId(result.id)}: result ignored (already settled, unknown id, or from another socket)`,
+      `[finishCallWithResult:] call ${shortId(result.id)}: result ignored (already finished, unknown id, or from another socket)`,
     );
     return;
   }
-  settleCall(
-    result.id,
-    result.ok
-      ? { ok: true, data: result.data }
-      : {
-          ok: false,
-          error: new ExtensionError(
-            result.error.code,
-            result.error.message,
-            true,
-          ),
-        },
-  );
-}
-
-/** Fails at once every call still waiting on a socket that closed, instead of after the timeout. */
-export function failCallsOn(socket: WebSocket): void {
-  for (const [id, entry] of pendingCalls) {
-    if (entry.socket !== socket) {
-      continue;
-    }
-    settleCall(id, {
+  if (result.ok) {
+    finishCall(result.id, { ok: true, data: result.data });
+  } else {
+    const { code, message } = result.error;
+    finishCall(result.id, {
       ok: false,
-      error: new ExtensionError(
-        "NO_EXTENSION",
-        "Browser disconnected mid-call. Reconnect it from the extension popup, then retry.",
-        false,
-      ),
+      error: new ExtensionError(code, message, true),
     });
   }
 }
 
-/** Every path that ends a call goes through here, so a call is answered exactly once. */
-function settleCall(id: string, outcome: Outcome): void {
-  const entry = pendingCalls.get(id);
-  // Already settled by another path: result, timeout or socket close.
-  if (!entry) {
+/** Fails at once every call still waiting on a socket that closed, instead of after the timeout. */
+export function failCallsOnSocket(socket: WebSocket): void {
+  for (const [id, call] of pendingCalls) {
+    if (call.socket === socket) {
+      finishCall(id, { ok: false, error: disconnectedError() });
+    }
+  }
+}
+
+/** The one place a call ends, so it is answered exactly once. */
+function finishCall(id: string, outcome: CallOutcome): void {
+  const call = pendingCalls.get(id);
+  // Already finished by another path: result, timeout or socket close.
+  if (!call) {
     return;
   }
   pendingCalls.delete(id);
-  clearTimeout(entry.timer);
-  entry.deliver(outcome);
+  clearTimeout(call.timeoutTimer);
+  call.finish(outcome);
+}
+
+function timeoutError(): ExtensionError {
+  return new ExtensionError(
+    "TIMEOUT",
+    `The browser did not answer within ${CALL_TIMEOUT_MS / 1000}s. Its effects may still land; check before retrying.`,
+    false,
+  );
+}
+
+function disconnectedError(): ExtensionError {
+  return new ExtensionError(
+    "NO_EXTENSION",
+    "Browser disconnected mid-call. Reconnect it from the extension popup, then retry.",
+    false,
+  );
 }

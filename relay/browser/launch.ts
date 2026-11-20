@@ -1,5 +1,9 @@
-// Starts the user's browser when a tool call arrives and no extension is connected, then waits for
-// the extension to say hello. One launch runs at a time; calls that arrive during it share it.
+// Starts the user's browser when a tool call needs it and no extension is connected, then waits
+// for the extension to say hello. Only one launch runs at a time: calls that arrive during a
+// launch wait for that same launch instead of opening another browser window.
+//
+// Flow: requireExtension (socket.ts) → launchBrowserAndWait → startBrowserAndWaitForHello
+//         → startBrowser, then waitForHello … until onHello (socket.ts) calls onExtensionConnected
 
 import { spawn } from "node:child_process";
 import { browserLaunchCommand } from "../relay-lib.ts";
@@ -10,6 +14,7 @@ export const BROWSER_LAUNCH = browserLaunchCommand(
   process.env.BROWSER_LAUNCH,
   process.platform,
 );
+/** How long a launch waits for the extension to say hello before giving up. */
 export const LAUNCH_WAIT_MS = 20_000;
 /**
  * When the browser is already running, the launch command opens another window instead of
@@ -17,50 +22,73 @@ export const LAUNCH_WAIT_MS = 20_000;
  */
 const LAUNCH_COOLDOWN_MS = 60_000;
 
-/** When the browser was last launched (ms epoch); 0 = never. */
+/** When the browser was last launched (ms since epoch); 0 = never. */
 let lastLaunchAt = 0;
-let launchInProgress: Promise<void> | null = null;
-/** Ends the running launch's wait early. Set only while a launch is in progress. */
-let endLaunchWait: (() => void) | null = null;
+/** The launch now running, or null. Calls that arrive meanwhile await this same promise. */
+let currentLaunch: Promise<void> | null = null;
+/** Ends the current launch's wait as soon as the extension says hello; null when nothing waits. */
+let stopWaiting: (() => void) | null = null;
+
+/**
+ * Starts the browser and waits until its extension says hello or LAUNCH_WAIT_MS passes.
+ * Joins a launch that is already running instead of starting a second one, and does nothing
+ * when auto-start is off or the last launch is within the cooldown.
+ * Never rejects: the caller checks for itself whether an extension connected.
+ */
+export function launchBrowserAndWait(): Promise<void> {
+  if (currentLaunch) {
+    log("[launchBrowserAndWait:] a launch is already running; waiting for it");
+    return currentLaunch;
+  }
+  const reason = reasonNotToLaunch();
+  if (reason) {
+    log(`[launchBrowserAndWait:] not starting the browser: ${reason}`);
+    return Promise.resolve();
+  }
+  currentLaunch = startBrowserAndWaitForHello().finally(() => {
+    currentLaunch = null;
+  });
+  return currentLaunch;
+}
+
+/** Called by onHello (socket.ts) on every hello. Ends the current launch's wait, if any. */
+export function onExtensionConnected(): void {
+  stopWaiting?.();
+}
 
 /** True once a launch was attempted, so the error text can say the browser was started. */
 export function browserWasLaunched(): boolean {
   return lastLaunchAt > 0;
 }
 
-/**
- * Joins the launch in progress, or starts one when `mayStart` is true, auto-start is on and the
- * last launch is older than the cooldown; otherwise resolves at once.
- * Resolves when the extension says hello or after LAUNCH_WAIT_MS. It never rejects: the caller
- * checks for itself whether an extension connected.
- */
-export function waitForBrowserLaunch(mayStart: boolean): Promise<void> {
-  if (launchInProgress) {
-    return launchInProgress;
+/** Why a new launch must not start now, or null when it may. */
+function reasonNotToLaunch(): string | null {
+  if (!BROWSER_LAUNCH) {
+    return "auto-start is off (BROWSER_LAUNCH)";
   }
-  if (
-    !mayStart ||
-    !BROWSER_LAUNCH ||
-    Date.now() - lastLaunchAt < LAUNCH_COOLDOWN_MS
-  ) {
-    return Promise.resolve();
+  const sinceLastLaunch = Date.now() - lastLaunchAt;
+  if (sinceLastLaunch < LAUNCH_COOLDOWN_MS) {
+    return `the last launch was ${sinceLastLaunch}ms ago (cooldown ${LAUNCH_COOLDOWN_MS}ms)`;
   }
-  launchInProgress = launchBrowser().finally(() => {
-    launchInProgress = null;
-  });
-  return launchInProgress;
+  return null;
 }
 
-/** Called on every hello. Ends the launch wait early when one is running; otherwise does nothing. */
-export function notifyExtensionConnected(): void {
-  endLaunchWait?.();
-}
-
-function launchBrowser(): Promise<void> {
+async function startBrowserAndWaitForHello(): Promise<void> {
   lastLaunchAt = Date.now();
+  log(`[startBrowserAndWaitForHello:] starting the browser: ${BROWSER_LAUNCH}`);
+  startBrowser();
+
+  const connected = await waitForHello(LAUNCH_WAIT_MS);
+  const waited = Date.now() - lastLaunchAt;
   log(
-    `[launchBrowser:] no browser connected; starting it with: ${BROWSER_LAUNCH}`,
+    connected
+      ? `[startBrowserAndWaitForHello:] extension connected after ${waited}ms`
+      : `[startBrowserAndWaitForHello:] no extension after ${waited}ms; giving up`,
   );
+}
+
+/** Runs the launch command in the background. The relay neither waits for it nor stops it. */
+function startBrowser(): void {
   const child = spawn(BROWSER_LAUNCH, {
     shell: true,
     detached: true,
@@ -68,24 +96,22 @@ function launchBrowser(): Promise<void> {
     windowsHide: true,
   });
   child.on("error", (error) =>
-    log(`[launchBrowser:] browser launch failed: ${error.message}`),
+    log(`[startBrowser:] launch command failed: ${error.message}`),
   );
   child.unref(); // the relay must not wait for the browser to exit
+}
 
+/** Resolves true when onExtensionConnected runs, or false after `timeoutMs`. */
+function waitForHello(timeoutMs: number): Promise<boolean> {
   return new Promise((resolve) => {
-    // Runs once: clearing endLaunchWait stops a late hello from finishing it a second time.
-    const finish = (connected: boolean) => {
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    stopWaiting = () => finish(true);
+
+    // Clearing stopWaiting means a late hello cannot finish this wait a second time.
+    function finish(connected: boolean): void {
       clearTimeout(timer);
-      endLaunchWait = null;
-      const waited = Date.now() - lastLaunchAt;
-      log(
-        connected
-          ? `[launchBrowser:] extension connected after ${waited}ms`
-          : `[launchBrowser:] no extension after ${waited}ms; giving up`,
-      );
-      resolve();
-    };
-    const timer = setTimeout(() => finish(false), LAUNCH_WAIT_MS);
-    endLaunchWait = () => finish(true);
+      stopWaiting = null;
+      resolve(connected);
+    }
   });
 }

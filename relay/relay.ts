@@ -10,7 +10,7 @@
 //   mcp/server.ts      handleMcp → McpServer validates args (mcp/tools.ts) → runToolCall
 //   browser/socket.ts  requireExtension (browser/launch.ts starts the browser if needed)
 //   browser/calls.ts   sendCall → WebSocket {type:'call', id} → extension background.ts
-//   browser/socket.ts  {type:'result', id} frame → browser/calls.ts settleFromResult
+//   browser/socket.ts  {type:'result', id} frame → browser/calls.ts finishCallWithResult
 //   mcp/server.ts      runToolCall → fence (relay-lib.ts) → MCP response
 //
 // Folders: mcp/ is what the MCP client sees; browser/ is the link to the extension.

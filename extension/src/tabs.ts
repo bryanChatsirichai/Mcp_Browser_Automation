@@ -1,5 +1,12 @@
 // The agent works only in one tab group, so it stays visibly apart from the user's tabs. Where
 // the group is created follows the tabWindow setting; new windows are never focused.
+//
+// Used by tools.ts:
+//   groupTabs   the group's tabs (never creates the group)
+//   ensureGroup the group's tabs, creating the group when there is none
+//   openTab     a new tab in the group, creating the group when there is none
+//   tabContext  the tab list returned to the model
+// Creating a group: createGroup → createFirstGroupTab (where, per tabWindow) → group and title it
 
 import { ToolError } from "./errors.js";
 import { loadSettings } from "./settings.js";
@@ -45,7 +52,7 @@ export async function groupTabs(): Promise<chrome.tabs.Tab[]> {
  * The user's main window: the normal window they focused last, or, if that one is private,
  * any other open normal window. Undefined when no normal, non-private window is open.
  */
-async function mainWindow(): Promise<chrome.windows.Window | undefined> {
+async function findMainWindow(): Promise<chrome.windows.Window | undefined> {
   try {
     const last = await chrome.windows.getLastFocused({
       windowTypes: ["normal"],
@@ -61,7 +68,7 @@ async function mainWindow(): Promise<chrome.windows.Window | undefined> {
 }
 
 /** The first tab of a new unfocused window. */
-async function newWindowTab(
+async function openTabInNewWindow(
   incognito: boolean,
 ): Promise<chrome.tabs.Tab | undefined> {
   const window = await chrome.windows.create({
@@ -72,7 +79,7 @@ async function newWindowTab(
   return window?.tabs?.[0];
 }
 
-async function firstTab(
+async function createFirstGroupTab(
   placement: TabWindow,
 ): Promise<chrome.tabs.Tab | undefined> {
   if (placement === "incognito") {
@@ -84,10 +91,10 @@ async function firstTab(
           "or to choose another window in the extension popup.",
       );
     }
-    return newWindowTab(true);
+    return openTabInNewWindow(true);
   }
   if (placement === "current") {
-    const window = await mainWindow();
+    const window = await findMainWindow();
     // Inactive, so the user's own tab stays in front.
     if (window?.id !== undefined) {
       return chrome.tabs.create({
@@ -97,12 +104,12 @@ async function firstTab(
       });
     }
   }
-  return newWindowTab(false);
+  return openTabInNewWindow(false);
 }
 
 /** One blank tab, grouped and titled, placed as the tabWindow setting says. Returns that tab. */
 async function createGroup(): Promise<chrome.tabs.Tab> {
-  const tab = await firstTab((await loadSettings()).tabWindow);
+  const tab = await createFirstGroupTab((await loadSettings()).tabWindow);
   if (tab?.id === undefined) {
     throw new Error("The browser did not create a tab for the tab group.");
   }

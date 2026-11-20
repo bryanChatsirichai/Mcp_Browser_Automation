@@ -76,7 +76,9 @@ async function runToolCall(
   const started = Date.now();
   log(`${tag}: start`);
   try {
+    log(`${tag}: waiting for extension`);
     const socket = await requireExtension();
+    log(`${tag}: sending to extension`);
     const data = await sendCall(socket, id, tool, args);
     log(`${tag}: ok in ${Date.now() - started}ms`);
     return {
