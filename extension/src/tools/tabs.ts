@@ -8,9 +8,9 @@
 //   tabContext  the tab list returned to the model
 // Creating a group: createGroup → createFirstGroupTab (where, per tabWindow) → group and title it
 
-import { ToolError } from "./errors.js";
-import { loadSettings } from "./settings.js";
-import type { TabWindow } from "./settings.js";
+import { ToolError } from "../shared/errors.js";
+import { loadSettings } from "../shared/settings.js";
+import type { TabWindow } from "../shared/settings.js";
 
 const GROUP_TITLE = "MCP Browser";
 const GROUP_COLOR = "orange";

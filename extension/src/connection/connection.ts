@@ -16,12 +16,12 @@ import {
   CLOSE_BY_USER,
   CLOSE_REPLACED,
   CLOSE_UNAUTHORIZED,
-} from "./protocol.js";
-import type { Call, ToExtension, ToRelay } from "./protocol.js";
+} from "../shared/protocol.js";
+import type { Call, ToExtension, ToRelay } from "../shared/protocol.js";
 import { enqueueCall } from "./calls.js";
-import { log } from "./log.js";
-import { loadSettings, loadStatus, saveStatus } from "./settings.js";
-import type { Settings } from "./settings.js";
+import { log } from "../shared/log.js";
+import { loadSettings, loadStatus, saveStatus } from "../shared/settings.js";
+import type { Settings } from "../shared/settings.js";
 
 /** How long the relay has to answer hello with ready. */
 const READY_TIMEOUT_MS = 8_000;

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   connectionChanged,
   DEFAULT_SETTINGS,
-} from "../extension/dist/settings.js";
+} from "../extension/dist/shared/settings.js";
 
 test("connectionChanged: changing only where tabs open does not reconnect", () => {
   assert.equal(

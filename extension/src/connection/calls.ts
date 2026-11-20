@@ -3,10 +3,10 @@
 // Flow: connection.ts onMessage → enqueueCall → waits its turn → runCall
 //         → resultOf → runTool (tools.ts) → result sent on the socket the call came from
 
-import { ToolError, toErrorBody } from "./errors.js";
-import type { Call, Result, ToRelay } from "./protocol.js";
-import { log, shortId } from "./log.js";
-import { runTool } from "./tools.js";
+import { ToolError, toErrorBody } from "../shared/errors.js";
+import type { Call, Result, ToRelay } from "../shared/protocol.js";
+import { log, shortId } from "../shared/log.js";
+import { runTool } from "../tools/tools.js";
 
 // Nested inside the relay's 90 s call timeout, which is inside the ~100 s idle limit of common
 // tunnels, so the innermost limit fires first and the model gets the most specific message.

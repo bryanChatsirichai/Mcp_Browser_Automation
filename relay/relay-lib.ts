@@ -6,7 +6,7 @@
 import type { IncomingMessage } from "node:http";
 import { randomBytes } from "node:crypto";
 import * as z from "zod";
-import type { ToRelay } from "../extension/src/protocol.ts";
+import type { ToRelay } from "../extension/src/shared/protocol.ts";
 
 // Local-only gate
 

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ToolError, toErrorBody } from "../extension/dist/errors.js";
+import { ToolError, toErrorBody } from "../extension/dist/shared/errors.js";
 
 test("toErrorBody keeps a ToolError code, message and extra fields", () => {
   assert.deepEqual(

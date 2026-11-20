@@ -7,7 +7,7 @@
 // All three go through finishCall, which removes the call so the others find nothing to do.
 
 import type { WebSocket } from "ws";
-import type { Call, Result, ToolName } from "../../extension/src/protocol.ts";
+import type { Call, Result, ToolName } from "../../extension/src/shared/protocol.ts";
 import { log, shortId } from "../log.ts";
 
 /** Longer than the extension's own 85 s budget, so its more specific timeout message wins. */

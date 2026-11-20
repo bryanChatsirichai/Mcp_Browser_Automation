@@ -1,8 +1,8 @@
 // The extension half of each tool. relay/mcp/tools.ts holds the name, description and argument
 // schema, and validates the arguments before they reach these handlers.
 
-import { ToolError } from "./errors.js";
-import type { TabsListArgs, ToolName } from "./protocol.js";
+import { ToolError } from "../shared/errors.js";
+import type { TabsListArgs, ToolName } from "../shared/protocol.js";
 import { ensureGroup, groupTabs, openTab, tabContext } from "./tabs.js";
 
 /** Returns plain data; the relay turns it into JSON text for the model. */

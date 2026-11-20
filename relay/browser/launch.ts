@@ -6,6 +6,7 @@
 //         → startBrowser, then waitForHello … until onHello (socket.ts) calls onExtensionConnected
 
 import { spawn } from "node:child_process";
+import { EventEmitter, once } from "node:events";
 import { browserLaunchCommand } from "../relay-lib.ts";
 import { log } from "../log.ts";
 
@@ -26,8 +27,8 @@ const LAUNCH_COOLDOWN_MS = 60_000;
 let lastLaunchAt = 0;
 /** The launch now running, or null. Calls that arrive meanwhile await this same promise. */
 let currentLaunch: Promise<void> | null = null;
-/** Ends the current launch's wait as soon as the extension says hello; null when nothing waits. */
-let stopWaiting: (() => void) | null = null;
+/** Emits "connected" on every hello. waitForHello listens for it. */
+const hello = new EventEmitter();
 
 /**
  * Starts the browser and waits until its extension says hello or LAUNCH_WAIT_MS passes.
@@ -36,6 +37,7 @@ let stopWaiting: (() => void) | null = null;
  * Never rejects: the caller checks for itself whether an extension connected.
  */
 export function launchBrowserAndWait(): Promise<void> {
+  log("[launchBrowserAndWait:] checking whether to start the browser");
   if (currentLaunch) {
     log("[launchBrowserAndWait:] a launch is already running; waiting for it");
     return currentLaunch;
@@ -45,15 +47,17 @@ export function launchBrowserAndWait(): Promise<void> {
     log(`[launchBrowserAndWait:] not starting the browser: ${reason}`);
     return Promise.resolve();
   }
+  log("[launchBrowserAndWait:] starting the browser and waiting for hello");
   currentLaunch = startBrowserAndWaitForHello().finally(() => {
     currentLaunch = null;
   });
+  log("[launchBrowserAndWait:] launch started; returning its promise");
   return currentLaunch;
 }
 
-/** Called by onHello (socket.ts) on every hello. Ends the current launch's wait, if any. */
+/** Called by onHello (socket.ts) on every hello. Ends a launch's wait, if one is waiting. */
 export function onExtensionConnected(): void {
-  stopWaiting?.();
+  hello.emit("connected");
 }
 
 /** True once a launch was attempted, so the error text can say the browser was started. */
@@ -101,17 +105,13 @@ function startBrowser(): void {
   child.unref(); // the relay must not wait for the browser to exit
 }
 
-/** Resolves true when onExtensionConnected runs, or false after `timeoutMs`. */
-function waitForHello(timeoutMs: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => finish(false), timeoutMs);
-    stopWaiting = () => finish(true);
-
-    // Clearing stopWaiting means a late hello cannot finish this wait a second time.
-    function finish(connected: boolean): void {
-      clearTimeout(timer);
-      stopWaiting = null;
-      resolve(connected);
-    }
-  });
+/** True when the extension says hello within `timeoutMs`, false when the time runs out. */
+async function waitForHello(timeoutMs: number): Promise<boolean> {
+  try {
+    // once() removes its listener itself, on the hello or on the timeout.
+    await once(hello, "connected", { signal: AbortSignal.timeout(timeoutMs) });
+    return true;
+  } catch {
+    return false; // the timeout aborted the wait
+  }
 }

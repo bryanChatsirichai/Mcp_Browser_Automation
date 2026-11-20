@@ -6,5 +6,5 @@
   "minimum_chrome_version": "125",
   "permissions": ["storage", "alarms", "tabs", "tabGroups"],
   "background": { "service_worker": "dist/background.js", "type": "module" },
-  "action": { "default_popup": "popup.html", "default_title": "Browser Bridge" }
+  "action": { "default_popup": "pages/popup.html", "default_title": "Browser Bridge" }
 }

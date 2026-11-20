@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/server";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
-import type { ToolName } from "../../extension/src/protocol.ts";
+import type { ToolName } from "../../extension/src/shared/protocol.ts";
 import { ExtensionError, sendCall } from "../browser/calls.ts";
 import { requireExtension } from "../browser/socket.ts";
 import { fence } from "../relay-lib.ts";

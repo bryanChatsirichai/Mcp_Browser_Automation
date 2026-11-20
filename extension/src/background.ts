@@ -1,18 +1,18 @@
 // Service worker entry point (manifest.json "background"). Chrome runs this file when the browser
 // starts, when the extension is loaded or reloaded, and again whenever one of the events below
-// wakes a worker it had stopped. It only wires those events to connection.ts.
+// wakes a worker it had stopped. It only wires those events to connection/connection.ts.
 //
 // Files, in the order one tool call passes through them:
-//   connection.ts  the WebSocket to the relay: connect, hello/ready, ping, retry
-//   calls.ts       runs each call from the relay, one at a time, and sends one result back
-//   tools.ts       the handler for each tool name
-//   tabs.ts        the Chrome work: the "MCP Browser" tab group and its tabs
+//   connection/connection.ts  the WebSocket to the relay: connect, hello/ready, ping, retry
+//   connection/calls.ts       runs each call from the relay, one at a time, and sends one result back
+//   tools/tools.ts            the handler for each tool name
+//   tools/tabs.ts             the Chrome work: the "MCP Browser" tab group and its tabs
 // Logs: chrome://extensions › Browser Bridge › Inspect views: service worker. Lines about a call
 // carry the same short call id as the relay log.
 
-import { reconnectIfAllowed, restartWithNewSettings } from "./connection.js";
-import { connectionChanged } from "./settings.js";
-import type { Settings } from "./settings.js";
+import { reconnectIfAllowed, restartWithNewSettings } from "./connection/connection.js";
+import { connectionChanged } from "./shared/settings.js";
+import type { Settings } from "./shared/settings.js";
 
 main();
 

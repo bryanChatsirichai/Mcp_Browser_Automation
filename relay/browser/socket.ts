@@ -12,8 +12,8 @@ import {
   CLOSE_BY_USER,
   CLOSE_REPLACED,
   CLOSE_UNAUTHORIZED,
-} from "../../extension/src/protocol.ts";
-import type { Hello, ToExtension } from "../../extension/src/protocol.ts";
+} from "../../extension/src/shared/protocol.ts";
+import type { Hello, ToExtension } from "../../extension/src/shared/protocol.ts";
 import {
   BROWSER_LAUNCH,
   LAUNCH_WAIT_MS,

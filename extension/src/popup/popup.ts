@@ -13,8 +13,8 @@ import {
   loadSettings,
   loadStatus,
   saveSettings,
-} from "./settings.js";
-import type { Settings, Status, TabWindow } from "./settings.js";
+} from "../shared/settings.js";
+import type { Settings, Status, TabWindow } from "../shared/settings.js";
 
 const urlInput = document.querySelector<HTMLInputElement>("#url")!;
 const connectButton = document.querySelector<HTMLButtonElement>("#connect")!;
