@@ -29,10 +29,11 @@ export async function runTool(
   const handler = Object.hasOwn(handlers, tool)
     ? handlers[tool as ToolName]
     : undefined;
-  if (!handler)
+  if (!handler) {
     throw new ToolError(
       "UNKNOWN_TOOL",
       `This browser does not support the tool "${tool}". Update the extension.`,
     );
+  }
   return handler(args);
 }

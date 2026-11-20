@@ -50,7 +50,9 @@ async function mainWindow(): Promise<chrome.windows.Window | undefined> {
     const last = await chrome.windows.getLastFocused({
       windowTypes: ["normal"],
     });
-    if (!last.incognito) return last;
+    if (!last.incognito) {
+      return last;
+    }
   } catch {
     // No window has had focus yet; fall through to any open window.
   }
@@ -87,12 +89,13 @@ async function firstTab(
   if (placement === "current") {
     const window = await mainWindow();
     // Inactive, so the user's own tab stays in front.
-    if (window?.id !== undefined)
+    if (window?.id !== undefined) {
       return chrome.tabs.create({
         windowId: window.id,
         url: "about:blank",
         active: false,
       });
+    }
   }
   return newWindowTab(false);
 }
@@ -100,8 +103,9 @@ async function firstTab(
 /** One blank tab, grouped and titled, placed as the tabWindow setting says. Returns that tab. */
 async function createGroup(): Promise<chrome.tabs.Tab> {
   const tab = await firstTab((await loadSettings()).tabWindow);
-  if (tab?.id === undefined)
+  if (tab?.id === undefined) {
     throw new Error("The browser did not create a tab for the tab group.");
+  }
 
   const groupId = await chrome.tabs.group({
     tabIds: tab.id,
@@ -118,15 +122,18 @@ async function createGroup(): Promise<chrome.tabs.Tab> {
 /** Opens a blank tab in the group, creating the group first if there is none. */
 export async function openTab(): Promise<chrome.tabs.Tab> {
   const group = await findGroup();
-  if (!group) return createGroup();
+  if (!group) {
+    return createGroup();
+  }
   // Inactive, so the group's window is not brought to the front.
   const tab = await chrome.tabs.create({
     windowId: group.windowId,
     url: "about:blank",
     active: false,
   });
-  if (tab.id === undefined)
+  if (tab.id === undefined) {
     throw new Error("The browser did not return an id for the new tab.");
+  }
   await chrome.tabs.group({ groupId: group.id, tabIds: tab.id });
   return tab;
 }

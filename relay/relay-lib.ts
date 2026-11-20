@@ -24,15 +24,27 @@ export type RequestLike = Pick<IncomingMessage, "headers"> & {
  * Used by relay.ts, on every HTTP request (route) and WebSocket upgrade (handleUpgrade).
  */
 export function isLocal(req: RequestLike): boolean {
-  if (!LOOPBACK_ADDRESSES.has(req.socket.remoteAddress ?? "")) return false; // other machines
+  // Refuse other machines.
+  if (!LOOPBACK_ADDRESSES.has(req.socket.remoteAddress ?? "")) {
+    return false;
+  }
 
   const host = req.headers.host;
-  if (!host || !LOCAL_HOSTNAMES.has(hostnameOf(host))) return false; // DNS rebinding, HTTP tunnels
+  // Refuse DNS rebinding and HTTP tunnels: the Host must name this machine.
+  if (!host || !LOCAL_HOSTNAMES.has(hostnameOf(host))) {
+    return false;
+  }
 
-  if (req.headers["x-forwarded-for"] || req.headers["x-forwarded-host"]) return false; // reverse proxies
+  // Refuse requests forwarded by a reverse proxy.
+  if (req.headers["x-forwarded-for"] || req.headers["x-forwarded-host"]) {
+    return false;
+  }
 
   const origin = req.headers.origin;
-  if (origin && !origin.startsWith("chrome-extension://")) return false; // web pages
+  // Refuse web pages; only the extension may send an Origin.
+  if (origin && !origin.startsWith("chrome-extension://")) {
+    return false;
+  }
 
   return true;
 }
@@ -102,8 +114,13 @@ const INVISIBLE = /[\u{E0000}-\u{E007F}\u{202A}-\u{202E}\u{2066}-\u{2069}]/gu;
  * the tag name inside the body is defanged so a page cannot even imitate it.
  * Used by mcp/server.ts (runToolCall) on every result and on every error from the browser.
  */
-export function fence(text: string, nonce = randomBytes(8).toString("hex")): string {
-  const body = text.replace(INVISIBLE, "").replaceAll(FENCE, FENCE.replaceAll("-", "_"));
+export function fence(
+  text: string,
+  nonce = randomBytes(8).toString("hex"),
+): string {
+  const body = text
+    .replace(INVISIBLE, "")
+    .replaceAll(FENCE, FENCE.replaceAll("-", "_"));
   return `<${FENCE} id="${nonce}">\n${body}\n</${FENCE} id="${nonce}">`;
 }
 
@@ -115,12 +132,19 @@ export function fence(text: string, nonce = randomBytes(8).toString("hex")): str
  * The default starts Chrome; `start` on Windows finds chrome.exe through its App Paths entry.
  * Used by browser/launch.ts, once at startup.
  */
-export function browserLaunchCommand(configured: string | undefined, platform: NodeJS.Platform): string {
+export function browserLaunchCommand(
+  configured: string | undefined,
+  platform: NodeJS.Platform,
+): string {
   if (configured !== undefined) {
     const command = configured.trim();
     return command.toLowerCase() === "off" ? "" : command;
   }
-  if (platform === "win32") return 'start "" chrome';
-  if (platform === "darwin") return 'open -g -a "Google Chrome"';
+  if (platform === "win32") {
+    return 'start "" chrome';
+  }
+  if (platform === "darwin") {
+    return 'open -g -a "Google Chrome"';
+  }
   return "google-chrome";
 }

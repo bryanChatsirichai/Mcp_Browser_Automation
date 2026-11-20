@@ -37,9 +37,12 @@ let disconnectedByUser = false;
  * Throws an ExtensionError NO_EXTENSION, worded as the model's next step, when none connects.
  */
 export async function requireExtension(): Promise<WebSocket> {
-  if (!activeExtension) await waitForBrowserLaunch(!disconnectedByUser);
-  if (!activeExtension)
+  if (!activeExtension) {
+    await waitForBrowserLaunch(!disconnectedByUser);
+  }
+  if (!activeExtension) {
     throw new ExtensionError("NO_EXTENSION", noBrowserMessage(), false);
+  }
   return activeExtension;
 }
 
@@ -66,12 +69,18 @@ export function acceptExtension(ws: WebSocket): void {
   };
 
   ws.on("message", (data, isBinary) => {
-    if (isBinary) return;
+    if (isBinary) {
+      return;
+    }
     const message = parseToRelay(data.toString());
-    if (!message) return;
+    if (!message) {
+      return;
+    }
 
     if (!greeted) {
-      if (message.type !== "hello") return;
+      if (message.type !== "hello") {
+        return;
+      }
       greeted = true;
       clearTimeout(helloTimer);
       onHello(ws, message);
@@ -81,15 +90,21 @@ export function acceptExtension(ws: WebSocket): void {
 
     // Any valid frame after hello proves the socket is alive.
     restartIdleTimer();
-    if (message.type === "ping") sendTo(ws, { type: "pong" });
-    else if (message.type === "result") settleFromResult(ws, message);
+    if (message.type === "ping") {
+      sendTo(ws, { type: "pong" });
+    } else if (message.type === "result") {
+      settleFromResult(ws, message);
+    }
   });
 
   ws.on("close", (code) => {
     clearTimeout(helloTimer);
     clearTimeout(idleTimer);
     failCallsOn(ws);
-    if (activeExtension !== ws) return; // a replaced or never-greeted socket
+    // A replaced or never-greeted socket is not the active one: nothing more to reset.
+    if (activeExtension !== ws) {
+      return;
+    }
     activeExtension = null;
     // The extension closes with CLOSE_BY_USER only when the user presses Disconnect; a quitting
     // browser or a dropped connection closes with another code.

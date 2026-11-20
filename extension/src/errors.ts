@@ -20,8 +20,9 @@ export class ToolError extends Error {
 
 /** Any thrown value as a wire error body. Unexpected errors keep their message under code ERROR. */
 export function toErrorBody(error: unknown): ErrorBody {
-  if (error instanceof ToolError)
+  if (error instanceof ToolError) {
     return { ...error.extra, code: error.code, message: error.message };
+  }
   return {
     code: "ERROR",
     message: error instanceof Error ? error.message : String(error),

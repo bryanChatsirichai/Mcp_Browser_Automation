@@ -28,7 +28,9 @@ async function relayCommand(): Promise<string> {
   try {
     const response = await fetch(chrome.runtime.getURL("dist/install.json"));
     const { relay } = (await response.json()) as { relay?: unknown };
-    if (typeof relay === "string" && relay) return `node "${relay}"`;
+    if (typeof relay === "string" && relay) {
+      return `node "${relay}"`;
+    }
   } catch {
     // fall through to the generic command
   }
@@ -50,13 +52,16 @@ function isHttpUrl(value: string): boolean {
 }
 
 function actionFor(draftUrl: string): Action {
-  if (!saved.enabled) return "Connect";
+  if (!saved.enabled) {
+    return "Connect";
+  }
   if (
     draftUrl !== saved.url ||
     status.state === "unauthorized" ||
     status.state === "replaced"
-  )
+  ) {
     return "Reconnect";
+  }
   return status.state === "connected" ? "Disconnect" : "Cancel";
 }
 
@@ -87,8 +92,9 @@ function render(): void {
           : "")
       : "Enter an http:// or https:// URL.";
   startBox.hidden = status.state === "connected";
-  for (const input of tabWindowInputs)
+  for (const input of tabWindowInputs) {
     input.checked = input.value === saved.tabWindow;
+  }
   // Re-checked on every render: the user may enable incognito access while the popup is open.
   void chrome.extension.isAllowedIncognitoAccess().then((allowed) => {
     incognitoWarning.hidden = allowed || saved.tabWindow !== "incognito";
@@ -100,8 +106,9 @@ function render(): void {
 for (const input of tabWindowInputs) {
   input.addEventListener("change", () => {
     const tabWindow = TAB_WINDOWS.find((value) => value === input.value);
-    if (input.checked && tabWindow)
+    if (input.checked && tabWindow) {
       void saveSettings({ ...saved, tabWindow, enabled: false });
+    }
   });
 }
 
@@ -131,16 +138,18 @@ button.addEventListener("click", async () => {
 urlInput.addEventListener("input", render);
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "session" && changes.status)
+  if (area === "session" && changes.status) {
     status = (changes.status.newValue as Status | undefined) ?? {
       state: "disconnected",
     };
-  else if (area === "local" && changes.settings)
+  } else if (area === "local" && changes.settings) {
     saved = {
       ...DEFAULT_SETTINGS,
       ...(changes.settings.newValue as Partial<Settings> | undefined),
     };
-  else return;
+  } else {
+    return;
+  }
   render();
 });
 

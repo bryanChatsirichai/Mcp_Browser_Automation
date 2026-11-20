@@ -57,14 +57,18 @@ function send(ws: WebSocket, message: ToRelay): void {
 
 /** A message from the relay, or null for anything that is not valid JSON of a known shape. */
 function parseToExtension(data: unknown): ToExtension | null {
-  if (typeof data !== "string") return null;
+  if (typeof data !== "string") {
+    return null;
+  }
   let message: Record<string, unknown>;
   try {
     message = JSON.parse(data);
   } catch {
     return null;
   }
-  if (typeof message !== "object" || message === null) return null;
+  if (typeof message !== "object" || message === null) {
+    return null;
+  }
   switch (message.type) {
     case "ready":
     case "ping":
@@ -110,11 +114,12 @@ async function handleCall(
   try {
     // The budget counts from arrival, so time spent waiting in the queue is included.
     const left = receivedAt + CALL_BUDGET_MS - Date.now();
-    if (left <= 0)
+    if (left <= 0) {
       throw new ToolError(
         "BUSY",
         "The browser was busy with earlier calls. This call was not run; retry it.",
       );
+    }
     const work = runTool(call.tool, call.args);
     // A call that loses the race may still fail later; that failure must not go unhandled.
     work.catch(() => undefined);
@@ -161,7 +166,9 @@ async function connect(): Promise<void> {
   const settings = await loadSettings();
   // Checked after the await, and the socket is stored with no await in between, so two
   // concurrent calls (the alarm and a start-up resume) cannot open two sockets.
-  if (!settings.enabled || socket) return;
+  if (!settings.enabled || socket) {
+    return;
+  }
 
   let url: string;
   try {
@@ -178,8 +185,9 @@ async function connect(): Promise<void> {
   socket = ws;
   log(`connecting to ${url}`);
   // During automatic retries keep showing "unreachable", or the popup flickers.
-  if ((await loadStatus()).state !== "unreachable")
+  if ((await loadStatus()).state !== "unreachable") {
     await saveStatus({ state: "connecting" });
+  }
 
   readyTimer = setTimeout(() => drop(ws), READY_TIMEOUT_MS);
 
@@ -192,8 +200,11 @@ async function connect(): Promise<void> {
       version: chrome.runtime.getManifest().version,
     });
     pingTimer = setInterval(() => {
-      if (Date.now() - heardAt > SILENCE_LIMIT_MS) drop(ws);
-      else send(ws, { type: "ping" });
+      if (Date.now() - heardAt > SILENCE_LIMIT_MS) {
+        drop(ws);
+      } else {
+        send(ws, { type: "ping" });
+      }
     }, PING_INTERVAL_MS);
   };
 
@@ -227,7 +238,9 @@ function drop(ws: WebSocket): void {
 }
 
 async function onClosed(ws: WebSocket, code: number): Promise<void> {
-  if (socket !== ws) return;
+  if (socket !== ws) {
+    return;
+  }
   socket = null;
   clearTimers();
   log(`closed with code ${code}`);
@@ -282,21 +295,27 @@ function disconnect(): void {
 /** Reconnects unless the last close needs the user to act first (refused or replaced). */
 async function resume(): Promise<void> {
   const { state } = await loadStatus();
-  if (state === "unauthorized" || state === "replaced") return; // the user must act first
+  // The user must act first.
+  if (state === "unauthorized" || state === "replaced") {
+    return;
+  }
   await connect();
 }
 
 // The popup never messages the worker: it saves settings, and this listener reacts.
 // The change event also wakes a stopped worker.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local" || !changes.settings) return;
+  if (area !== "local" || !changes.settings) {
+    return;
+  }
   if (
     !connectionChanged(
       changes.settings.oldValue as Partial<Settings> | undefined,
       changes.settings.newValue as Partial<Settings> | undefined,
     )
-  )
+  ) {
     return;
+  }
   disconnect();
   retryDelay = FIRST_RETRY_MS;
   void (async () => {
@@ -313,7 +332,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // The alarm wakes a worker that Chrome stopped and retries a lost connection.
 chrome.alarms.create("reconnect", { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "reconnect") void resume();
+  if (alarm.name === "reconnect") {
+    void resume();
+  }
 });
 chrome.runtime.onStartup.addListener(() => void resume());
 void resume();
