@@ -174,6 +174,6 @@ function whyNoExtension(): string {
   return "No browser connected. Ask the user to open the extension popup and press Connect.";
 }
 
-function send(ws: WebSocket, message: ToExtension): void {
-  ws.send(JSON.stringify(message));
+function send(webSocket: WebSocket, message: ToExtension): void {
+  webSocket.send(JSON.stringify(message));
 }

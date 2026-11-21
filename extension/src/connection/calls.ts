@@ -17,14 +17,14 @@ const CALL_BUDGET_MS = 85_000;
 let callQueue: Promise<void> = Promise.resolve();
 
 /** Queues a call from the relay; it runs after every call that arrived before it. */
-export function enqueueCall(ws: WebSocket, call: Call): void {
+export function enqueueCall(webSocket: WebSocket, call: Call): void {
   const receivedAt = Date.now();
-  callQueue = callQueue.then(() => runCall(ws, call, receivedAt));
+  callQueue = callQueue.then(() => runCall(webSocket, call, receivedAt));
 }
 
 /** Runs one call and sends its result on the socket the call came from, if that is still open. */
 async function runCall(
-  ws: WebSocket,
+  webSocket: WebSocket,
   call: Call,
   receivedAt: number,
 ): Promise<void> {
@@ -34,7 +34,7 @@ async function runCall(
   const result = await resultOf(call, receivedAt);
 
   const elapsed = Date.now() - receivedAt;
-  if (ws.readyState !== WebSocket.OPEN) {
+  if (webSocket.readyState !== WebSocket.OPEN) {
     log(`[runCall:] ${tag}: result dropped, socket closed after ${elapsed}ms`);
     return;
   }
@@ -42,7 +42,7 @@ async function runCall(
     `[runCall:] ${tag}: ${result.ok ? "ok" : result.error.code} in ${elapsed}ms`,
   );
   const message: ToRelay = result;
-  ws.send(JSON.stringify(message));
+  webSocket.send(JSON.stringify(message));
 }
 
 /**

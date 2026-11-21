@@ -34,10 +34,14 @@ export async function handleMcp(
     sessionIdGenerator: undefined,
   });
 
+  // Node emits "close" when the response is sent or the client hangs up early; either way this
+  // request's server and transport are done.
   res.on("close", () => {
     void transport.close();
     void mcpServer.close();
   });
+  // connect() routes the transport's incoming messages to the server and its replies back.
+  // handleRequest() then reads this one JSON-RPC request from req, runs it, and writes the reply to res.
   await mcpServer.connect(transport);
   await transport.handleRequest(req, res);
 }
@@ -78,9 +82,10 @@ async function runToolCall(
   try {
     log(`${tag}: waiting for extension`);
     const socket = await requireExtension();
-    log(`${tag}: sending to extension`);
+    log(`${tag}: sending to extension, tool ${tool} with args ${JSON.stringify(args)}`);
     const data = await sendCall(socket, id, tool, args);
     log(`${tag}: ok in ${Date.now() - started}ms`);
+    log(`${tag}: result ${JSON.stringify(data, null, 2)}`);
     return {
       content: [{ type: "text", text: fence(JSON.stringify(data, null, 2)) }],
     };

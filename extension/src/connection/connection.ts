@@ -91,8 +91,8 @@ async function connect(): Promise<void> {
     return;
   }
 
-  const ws = new WebSocket(url);
-  relaySocket = ws;
+  const webSocket = new WebSocket(url);
+  relaySocket = webSocket;
   log(`[connect:] connecting to ${url}`);
   // During automatic retries keep showing "unreachable", or the popup flickers.
   if ((await loadStatus()).state !== "unreachable") {
@@ -101,34 +101,38 @@ async function connect(): Promise<void> {
 
   readyTimer = setTimeout(() => {
     log(`[connect:] no ready within ${READY_TIMEOUT_MS}ms; dropping`);
-    dropConnection(ws);
+    dropConnection(webSocket);
   }, READY_TIMEOUT_MS);
-  ws.onopen = () => onOpen(ws, settings);
-  ws.onmessage = (event) => onMessage(ws, settings, event.data);
-  ws.onclose = (event) => void handleClose(ws, event.code);
+  webSocket.onopen = () => onOpen(webSocket, settings);
+  webSocket.onmessage = (event) => onMessage(webSocket, settings, event.data);
+  webSocket.onclose = (event) => void handleClose(webSocket, event.code);
 }
 
 /** Says hello and starts the keep-alive. */
-function onOpen(ws: WebSocket, settings: Settings): void {
+function onOpen(webSocket: WebSocket, settings: Settings): void {
   lastHeardAt = Date.now();
-  send(ws, {
+  send(webSocket, {
     type: "hello",
     token: settings.token,
     browser: browserName(),
     version: chrome.runtime.getManifest().version,
   });
-  pingTimer = setInterval(() => pingOrDrop(ws), PING_INTERVAL_MS);
+  pingTimer = setInterval(() => pingOrDrop(webSocket), PING_INTERVAL_MS);
 }
 
-function onMessage(ws: WebSocket, settings: Settings, data: unknown): void {
+function onMessage(
+  webSocket: WebSocket,
+  settings: Settings,
+  data: unknown,
+): void {
   lastHeardAt = Date.now();
   const message = parseToExtension(data);
   if (message?.type === "ready") {
     onReady(settings);
   } else if (message?.type === "ping") {
-    send(ws, { type: "pong" });
+    send(webSocket, { type: "pong" });
   } else if (message?.type === "call") {
-    enqueueCall(ws, message);
+    enqueueCall(webSocket, message);
   }
 }
 
@@ -141,13 +145,15 @@ function onReady(settings: Settings): void {
 }
 
 /** Pings the relay, or drops the connection when the relay has been silent too long. */
-function pingOrDrop(ws: WebSocket): void {
+function pingOrDrop(webSocket: WebSocket): void {
+  log("[pingOrDrop:] checking relay silence");
   const silentFor = Date.now() - lastHeardAt;
   if (silentFor > SILENCE_LIMIT_MS) {
     log(`[pingOrDrop:] relay silent for ${silentFor}ms; dropping`);
-    dropConnection(ws);
+    dropConnection(webSocket);
   } else {
-    send(ws, { type: "ping" });
+    log(`[pingOrDrop:] relay heard within ${silentFor}ms`);
+    send(webSocket, { type: "ping" });
   }
 }
 
@@ -155,15 +161,15 @@ function pingOrDrop(ws: WebSocket): void {
  * Closes the socket and runs the close handling at once. A relay that died never completes
  * the closing handshake, so the socket's own close event could arrive much later.
  */
-function dropConnection(ws: WebSocket): void {
-  ws.onclose = null;
-  ws.close();
-  void handleClose(ws, ABNORMAL_CLOSURE);
+function dropConnection(webSocket: WebSocket): void {
+  webSocket.onclose = null;
+  webSocket.close();
+  void handleClose(webSocket, ABNORMAL_CLOSURE);
 }
 
-async function handleClose(ws: WebSocket, code: number): Promise<void> {
+async function handleClose(webSocket: WebSocket, code: number): Promise<void> {
   // An old socket that was already replaced or closed on purpose: nothing to do.
-  if (relaySocket !== ws) {
+  if (relaySocket !== webSocket) {
     return;
   }
   relaySocket = null;
@@ -214,12 +220,12 @@ function scheduleRetry(): void {
 function disconnect(): void {
   clearTimeout(retryTimer);
   stopConnectionTimers();
-  const ws = relaySocket;
+  const webSocket = relaySocket;
   relaySocket = null;
-  if (ws) {
+  if (webSocket) {
     log("[disconnect:] disconnecting");
-    ws.onclose = null;
-    ws.close(CLOSE_BY_USER, "Disconnected by the user");
+    webSocket.onclose = null;
+    webSocket.close(CLOSE_BY_USER, "Disconnected by the user");
   }
 }
 
@@ -229,8 +235,8 @@ function stopConnectionTimers(): void {
   clearInterval(pingTimer);
 }
 
-function send(ws: WebSocket, message: ToRelay): void {
-  ws.send(JSON.stringify(message));
+function send(webSocket: WebSocket, message: ToRelay): void {
+  webSocket.send(JSON.stringify(message));
 }
 
 /** A message from the relay, or null for anything that is not valid JSON of a known shape. */
