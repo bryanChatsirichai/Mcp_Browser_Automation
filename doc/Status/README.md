@@ -33,7 +33,7 @@ The agent can open and list tabs in its own tab group. It cannot yet navigate, r
 | `tabs_list` | 1, 3 | Done. Lists the "MCP Browser" group; `createIfEmpty` creates it. |
 | `tab_open` | 3 | Done. Opens a blank tab in the group, creating the group if needed. |
 | `tab_close` | 3 | **Missing.** Not in `relay/tools.ts`, `protocol.ts` or the extension's dispatch table. |
-| `navigate` and later tools | 4+ | Not started. |
+| `navigate` and later tools | 4+ | Not started. See [tool-roadmap.md](tool-roadmap.md) for difficulty, usefulness and build order. |
 
 ## Step by step
 
