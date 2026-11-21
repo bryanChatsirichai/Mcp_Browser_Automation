@@ -12,7 +12,7 @@ extension/src/capture.ts    view of a tab, viewport capture, region capture     
 extension/src/snapshot.ts   evaluate                                               (new; grows in step 7)
 extension/src/protocol.ts   + screenshot arguments
 extension/src/tools.ts      + screenshot handler
-tools.ts                    + screenshot
+relay/tools.ts              + screenshot
 test/frame.test.ts                                                                 (new)
 ```
 

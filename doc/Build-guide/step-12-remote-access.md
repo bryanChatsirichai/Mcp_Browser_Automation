@@ -7,8 +7,8 @@
 ## Files
 
 ```text
-relay.ts                    the token, Bearer parsing, two-mode gate, hello token check, browser launch
-relay-lib.ts                + token comparison
+relay/relay.ts              the token, Bearer parsing, two-mode gate, hello token check, browser launch
+relay/relay-lib.ts          + token comparison
 stamp.ts                    writes extension/dist/install.json       (new)
 package.json                the build script runs stamp.ts after the compiler
 extension/src/popup.ts      token field, relay command, client snippet, copy buttons
@@ -46,7 +46,7 @@ The query-string form exists so that a file link can be opened directly in a bro
 
 **12.5 Extension uploads.** "Upload a file" (step 9) adds an `authorization: Bearer <token>` header when the saved token is not empty.
 
-**12.6 `stamp.ts` and the popup's commands.** An extension cannot find its own folder on disk, so it cannot tell the user where `relay.ts` is. Fix that at build time: after the compiler runs, `stamp.ts` writes `extension/dist/install.json` holding the absolute path of `relay.ts`. The popup fetches that file from inside the extension.
+**12.6 `stamp.ts` and the popup's commands.** An extension cannot find its own folder on disk, so it cannot tell the user where `relay/relay.ts` is. Fix that at build time: after the compiler runs, `stamp.ts` writes `extension/dist/install.json` holding the absolute path of `relay/relay.ts`. The popup fetches that file from inside the extension.
 
 - Before connecting, the popup shows the command to start the relay: the `RELAY_TOKEN` and `PORT` variables, then `node` and the path. Leave out any part that has its default value.
 - After connecting, it shows the command to add the server to an MCP client, with the `Authorization: Bearer` header when a token is set.

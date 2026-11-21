@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Browser Bridge</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #1f2328;
+      --muted: #59636e;
+      --border: #d1d9e0;
+      --accent: #0969da;
+      --accent-fg: #ffffff;
+      --ok: #1a7f37;
+      --warn: #9a6700;
+      --bad: #cf222e;
+      --idle: #8c959f;
+      color-scheme: light dark;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #161b22;
+        --fg: #e6edf3;
+        --muted: #9198a1;
+        --border: #3d444d;
+        --accent: #4493f8;
+        --accent-fg: #0d1117;
+        --ok: #3fb950;
+        --warn: #d29922;
+        --bad: #f85149;
+        --idle: #656c76;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 16px;
+      font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+    }
+
+    h1 {
+      font-size: 15px;
+      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    label,
+    .label {
+      display: block;
+      color: var(--muted);
+      margin: 0 0 4px;
+    }
+
+    #url {
+      width: 100%;
+      padding: 6px 8px;
+      font: inherit;
+      color: inherit;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    #url:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: -1px;
+    }
+
+    button {
+      font: inherit;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #connect {
+      width: 100%;
+      margin-top: 12px;
+      padding: 7px;
+      font-weight: 600;
+      color: var(--accent-fg);
+      background: var(--accent);
+      border: 0;
+    }
+
+    #status {
+      margin: 12px 0 0;
+      color: var(--muted);
+    }
+
+    fieldset {
+      margin: 12px 0 0;
+      padding: 12px 0 0;
+      border: 0;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Floated so the legend sits below the fieldset's top border instead of cutting through it. */
+    legend {
+      float: left;
+      width: 100%;
+      padding: 0;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    legend+.choice {
+      clear: both;
+    }
+
+    .choice {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      color: var(--fg);
+      margin: 0 0 6px;
+      cursor: pointer;
+    }
+
+    .choice input {
+      width: auto;
+      margin: 2px 0 0;
+      accent-color: var(--accent);
+    }
+
+    .choice small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .hint {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .warning {
+      margin: -2px 0 8px 24px;
+      color: var(--bad);
+      font-size: 12px;
+    }
+
+    #start {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .command {
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+    }
+
+    .command code {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font: 12px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace;
+      word-break: break-all;
+      user-select: all;
+    }
+
+    #copy {
+      flex: none;
+      padding: 6px 10px;
+      color: var(--fg);
+      background: transparent;
+      border: 1px solid var(--border);
+    }
+
+    #dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--idle);
+      flex: none;
+    }
+
+    #dot[data-state="connected"] {
+      background: var(--ok);
+    }
+
+    #dot[data-state="connecting"],
+    #dot[data-state="unreachable"] {
+      background: var(--warn);
+    }
+
+    #dot[data-state="unauthorized"],
+    #dot[data-state="replaced"] {
+      background: var(--bad);
+    }
+  </style>
+</head>
+
+<body>
+  <h1><span id="dot" aria-hidden="true"></span>Browser Bridge</h1>
+  <label for="url">Relay URL</label>
+  <input id="url" type="url" spellcheck="false" autocomplete="off">
+  <button id="connect" type="button">Connect</button>
+  <p id="status" role="status" aria-live="polite"></p>
+  <fieldset id="tab-window">
+    <legend>Open agent tabs in</legend>
+    <label class="choice">
+      <input type="radio" name="tabWindow" value="current">
+      <span>My main window<small>The window you used last, next to your own tabs</small></span>
+    </label>
+    <label class="choice">
+      <input type="radio" name="tabWindow" value="separate">
+      <span>Separate window<small>A window of its own, uses your logins</small></span>
+    </label>
+    <label class="choice">
+      <input type="radio" name="tabWindow" value="incognito">
+      <span>Incognito window<small>Clean session: none of your logins or cookies</small></span>
+    </label>
+    <p id="incognito-warning" class="warning" hidden>
+      Needs "Allow in Incognito": chrome://extensions › this extension › Details.
+    </p>
+    <p class="hint">Changing this disconnects; press Connect again. Applies when the "MCP Browser" group is created.
+      Close the group to move it.</p>
+  </fieldset>
+  <div id="start" hidden>
+    <p class="label">Start the relay in a terminal</p>
+    <div class="command">
+      <code id="command"></code>
+      <button id="copy" type="button">Copy</button>
+    </div>
+  </div>
+  <script type="module" src="../dist/popup/popup.js"></script>
+</body>
+
+</html>

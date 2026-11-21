@@ -6,7 +6,7 @@
 
 ## Sub-tasks
 
-**14.1 Validate tool arguments at the relay.** Until now a malformed call travels to the extension and may surface as an opaque `CDP_ERROR`. Zod is already a dependency: define one schema per tool beside its definition in root `tools.ts`. In the `tools/call` handler, validate the arguments before calling the extension, and on failure return an `isError` result naming the bad field. For `batch`, validate each item's input against its own tool's schema.
+**14.1 Validate tool arguments at the relay.** Until now a malformed call travels to the extension and may surface as an opaque `CDP_ERROR`. Zod is already a dependency: define one schema per tool beside its definition in `relay/tools.ts`. In the `tools/call` handler, validate the arguments before calling the extension, and on failure return an `isError` result naming the bad field. For `batch`, validate each item's input against its own tool's schema.
 
 Keep the JSON Schema served by `tools/list` and the zod schema from drifting apart: either generate one from the other, or add a test that both accept and reject the same sample inputs.
 
@@ -14,7 +14,7 @@ Keep the JSON Schema served by `tools/list` and the zod schema from drifting apa
 
 | Module | Functions |
 |---|---|
-| `relay-lib.ts` | is local, token comparison, fence, safe name, is uploadable, absolutize |
+| `relay/relay-lib.ts` | is local, token comparison, fence, safe name, is uploadable, absolutize |
 | `policy.ts` | check URL, clean sites, bad sites |
 | `frame.ts` | frame of, to CSS |
 | `keys.ts` | modifier bits, key info, split chord |
@@ -57,7 +57,7 @@ Run the whole list on a clean checkout. Every line maps to a rule from an earlie
 - [ ] `npm run check`, `npm run build`, `npm test` pass on the minimum supported Node version.
 - [ ] The relay smoke test (14.3) passes.
 - [ ] Searching `extension/src` for `chrome.debugger` finds it only in `cdp.ts`.
-- [ ] Searching `relay.ts` for `0.0.0.0` finds nothing.
+- [ ] Searching `relay/relay.ts` for `0.0.0.0` finds nothing.
 - [ ] Every tool name has a handler, a definition and a validation schema (the type-check and a test enforce this).
 
 **Access (steps 1, 12)**

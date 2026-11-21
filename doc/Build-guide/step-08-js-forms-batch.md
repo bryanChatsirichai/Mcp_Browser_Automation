@@ -11,8 +11,8 @@ extension/src/inspect.ts    run JS                                   (new; grows
 extension/src/input.ts      + set a form value, and its page functions
 extension/src/tools.ts      + run_js, set_field handlers; batch
 extension/src/protocol.ts   + run_js, set_field and batch arguments; "batch" in the tool names
-tools.ts                    + run_js, set_field, batch
-relay.ts                    call logging covers batch items
+relay/tools.ts              + run_js, set_field, batch
+relay/relay.ts              call logging covers batch items
 test/batch-names.test.ts                                             (new)
 ```
 

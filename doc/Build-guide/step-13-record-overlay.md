@@ -15,7 +15,7 @@ extension/src/input.ts      the mouse primitive moves the cursor
 extension/src/capture.ts    captures run with the overlay hidden
 extension/src/tools.ts      activate the overlay in runOne; clear it on release; record handler
 extension/manifest.json     + "offscreen"
-tools.ts                    + record
+relay/tools.ts              + record
 ```
 
 ## Part A: recording

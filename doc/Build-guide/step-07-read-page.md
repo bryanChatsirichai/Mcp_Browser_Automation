@@ -17,7 +17,7 @@ extension/src/snapshot.ts   + call on an object, collect, read page, find, resol
 extension/src/input.ts      + centre of an element
 extension/src/protocol.ts   + read_page and find arguments
 extension/src/tools.ts      + read_page, find, page_text; click accepts ref
-tools.ts                    + the three tools; ref on click
+relay/tools.ts              + the three tools; ref on click
 test/find.test.ts                                                         (new)
 ```
 

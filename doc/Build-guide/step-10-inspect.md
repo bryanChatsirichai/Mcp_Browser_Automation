@@ -10,7 +10,7 @@
 extension/src/inspect.ts    + buffers, event recorder, the inspect tool
 extension/src/protocol.ts   + inspect arguments
 extension/src/tools.ts      + inspect handler
-tools.ts                    + inspect
+relay/tools.ts              + inspect
 test/ring.test.ts                                                    (new)
 ```
 

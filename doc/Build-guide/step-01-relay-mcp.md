@@ -17,9 +17,9 @@
 ## Files
 
 ```text
-relay.ts                 HTTP server, routing, MCP endpoint
-relay-lib.ts             isLocal()                                  (new)
-tools.ts                 the tool definitions: one for now, tabs_list   (new)
+relay/relay.ts           HTTP server, routing, MCP endpoint
+relay/relay-lib.ts       isLocal()                                  (new)
+relay/tools.ts           the tool definitions: one for now, tabs_list   (new)
 test/relay-lib.test.ts                                              (new)
 ```
 
@@ -34,7 +34,7 @@ test/relay-lib.test.ts                                              (new)
 
 Every route lives inside `route`, so every route passes the same checks.
 
-**1.3 Local-only gate.** Write `isLocal(req)` in `relay-lib.ts` and call it first in `route`. A request is local only if all four conditions hold:
+**1.3 Local-only gate.** Write `isLocal(req)` in `relay/relay-lib.ts` and call it first in `route`. A request is local only if all four conditions hold:
 
 | Condition | What it stops |
 |---|---|
@@ -45,7 +45,7 @@ Every route lives inside `route`, so every route passes the same checks.
 
 Parse the `Host` header with the URL parser rather than splitting on `:`, so IPv6 forms are handled. If any condition fails, answer 403 with a message that says the relay only answers local requests.
 
-**1.4 Tool definitions.** In root `tools.ts`, export a list of tool definitions. Each has three fields: `name`, `description`, and `inputSchema`, which is a JSON Schema object (`type: "object"`, `properties`, `required`). Add one tool, `tabs_list`, with an optional boolean argument `createIfEmpty`.
+**1.4 Tool definitions.** In `relay/tools.ts`, export a list of tool definitions. Each has three fields: `name`, `description`, and `inputSchema`, which is a JSON Schema object (`type: "object"`, `properties`, `required`). Add one tool, `tabs_list`, with an optional boolean argument `createIfEmpty`.
 
 **1.5 MCP endpoint.** Accept only `POST /mcp`. Any other method on that path gets 405 with a JSON-RPC error body.
 
@@ -59,7 +59,7 @@ Write a `buildServer()` function that creates the `Server` with a name, a versio
 
 | Handler | Returns |
 |---|---|
-| list tools | The tool definitions from `tools.ts` |
+| list tools | The tool definitions from `relay/tools.ts` |
 | call tool | For an unknown name: a result with `isError: true` and a message naming the tool. For `tabs_list`, for now: the fixed text "stub: no browser yet" |
 
 **1.6 Test `isLocal`.** It only reads the headers and the socket's remote address, so a test can pass a plain object with those two fields. Cover: a plain local request; a forged `Host`; `X-Forwarded-For` present; a web `Origin`; a `chrome-extension://` origin; a non-loopback address.
@@ -68,9 +68,9 @@ Write a `buildServer()` function that creates the `Server` with a name, a versio
 
 | Name | Where | Shape |
 |---|---|---|
-| Tool definition | `tools.ts` | `{ name, description, inputSchema }`; `inputSchema` is `{ type: "object", properties, required }` |
-| Tool list | `tools.ts` | An exported array of tool definitions |
-| `isLocal(req)` | `relay-lib.ts` | Takes an incoming request, returns a boolean |
+| Tool definition | `relay/tools.ts` | `{ name, description, inputSchema }`; `inputSchema` is `{ type: "object", properties, required }` |
+| Tool list | `relay/tools.ts` | An exported array of tool definitions |
+| `isLocal(req)` | `relay/relay-lib.ts` | Takes an incoming request, returns a boolean |
 
 ## Done when
 
