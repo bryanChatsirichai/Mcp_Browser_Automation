@@ -80,11 +80,14 @@ async function runToolCall(
   const started = Date.now();
   log(`${tag}: start`);
   try {
+    // waits for the extension to connect, then sends the call to it and waits for a result frame
     log(`${tag}: waiting for extension`);
     const socket = await requireExtension();
+    // sends the call to extrnal extension, which runs it and sends back a result frame
     log(`${tag}: sending to extension, tool ${tool} with args ${JSON.stringify(args)}`);
     const data = await sendCall(socket, id, tool, args);
     log(`${tag}: ok in ${Date.now() - started}ms`);
+    // the relay does not know what the tool did, so it just returns the data to the MCP client
     log(`${tag}: result ${JSON.stringify(data, null, 2)}`);
     return {
       content: [{ type: "text", text: fence(JSON.stringify(data, null, 2)) }],

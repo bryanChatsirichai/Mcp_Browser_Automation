@@ -7,7 +7,11 @@
 // All three go through finishCall, which removes the call so the others find nothing to do.
 
 import type { WebSocket } from "ws";
-import type { Call, Result, ToolName } from "../../extension/src/shared/protocol.ts";
+import type {
+  Call,
+  Result,
+  ToolName,
+} from "../../extension/src/shared/protocol.ts";
 import { log, shortId } from "../log.ts";
 
 /** Longer than the extension's own 85 s budget, so its more specific timeout message wins. */
@@ -27,7 +31,8 @@ export class ExtensionError extends Error {
 }
 
 type CallOutcome =
-  { ok: true; data: unknown } | { ok: false; error: ExtensionError };
+  | { ok: true; data: unknown }
+  | { ok: false; error: ExtensionError };
 
 interface PendingCall {
   /** The socket the call went to; only it may answer, and its closing fails the call. */
@@ -42,6 +47,7 @@ interface PendingCall {
 const pendingCalls = new Map<string, PendingCall>();
 
 /** Sends one call on `socket`; resolves with its data, or rejects with an ExtensionError. */
+// return promise resolves when the call is answered, or rejects when it times out or the socket closes.
 export function sendCall(
   socket: WebSocket,
   id: string,
@@ -49,17 +55,20 @@ export function sendCall(
   args: Record<string, unknown>,
 ): Promise<unknown> {
   return new Promise((resolve, reject) => {
+    // Safety net: the extension can stay connected (its pings keep the socket alive) yet never
+    // answer, e.g. a bug that drops the result. Without this, the await would never end.
     const timeoutTimer = setTimeout(
       () => finishCall(id, { ok: false, error: timeoutError() }),
       CALL_TIMEOUT_MS,
     );
+    // The result arrives later in another function (finishCallWithResult), which has only the id.
+    // Stored here so it can find this call and settle this promise.
     pendingCalls.set(id, {
       socket,
       timeoutTimer,
       finish: (outcome) =>
         outcome.ok ? resolve(outcome.data) : reject(outcome.error),
     });
-
     const call: Call = { type: "call", id, tool, args };
     socket.send(JSON.stringify(call));
   });
@@ -70,6 +79,7 @@ export function sendCall(
  * already finished (for example after a timeout), is unknown, or was sent on another socket.
  */
 export function finishCallWithResult(socket: WebSocket, result: Result): void {
+  log(`[finishCallWithResult:] call ${shortId(result.id)}: result received from socket`);
   if (pendingCalls.get(result.id)?.socket !== socket) {
     log(
       `[finishCallWithResult:] call ${shortId(result.id)}: result ignored (already finished, unknown id, or from another socket)`,
@@ -89,6 +99,7 @@ export function finishCallWithResult(socket: WebSocket, result: Result): void {
 
 /** Fails at once every call still waiting on a socket that closed, instead of after the timeout. */
 export function failCallsOnSocket(socket: WebSocket): void {
+  log(`[failCallsOnSocket:] failing calls on socket`);
   for (const [id, call] of pendingCalls) {
     if (call.socket === socket) {
       finishCall(id, { ok: false, error: disconnectedError() });
@@ -98,6 +109,7 @@ export function failCallsOnSocket(socket: WebSocket): void {
 
 /** The one place a call ends, so it is answered exactly once. */
 function finishCall(id: string, outcome: CallOutcome): void {
+  log(`[finishCall:] call ${shortId(id)}: finishing`);
   const call = pendingCalls.get(id);
   // Already finished by another path: result, timeout or socket close.
   if (!call) {

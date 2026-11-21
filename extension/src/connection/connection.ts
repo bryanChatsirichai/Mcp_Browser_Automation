@@ -126,7 +126,9 @@ function onMessage(
   data: unknown,
 ): void {
   lastHeardAt = Date.now();
+  // The relay can send anything, but only the known messages are handled. Unknown messages are ignored.
   const message = parseToExtension(data);
+  console.log("Received message from relay:", message);
   if (message?.type === "ready") {
     onReady(settings);
   } else if (message?.type === "ping") {
