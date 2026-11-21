@@ -4,7 +4,7 @@ Where this implementation stands against the [build guide](../Build-guide/README
 
 ## Summary
 
-Steps 0 to 2 are complete. Step 3 is mostly done: the round trip works end to end, but the `tab_close` tool is missing. Steps 4 to 14 have not started, apart from two pieces of step 12 (browser auto-launch and the build stamp) that were built early.
+Steps 0 to 2 are complete. Step 3 is mostly done: the round trip works end to end and all three tab tools exist, but `tab_close` has not been checked in a browser yet. Steps 4 to 14 have not started, apart from two pieces of step 12 (browser auto-launch and the build stamp) that were built early.
 
 The agent can open and list tabs in its own tab group. It cannot yet navigate, read or click a page.
 
@@ -12,7 +12,7 @@ The agent can open and list tabs in its own tab group. It cannot yet navigate, r
  FOUNDATION        0  Project skeleton                  DONE
                    1  Relay speaks MCP                  DONE
                    2  Extension connects                DONE
-                   3  Round trip, first tools           PARTIAL  (tab_close missing)
+                   3  Round trip, first tools           PARTIAL  (browser checks not run)
  DRIVING A PAGE    4  Debugger, navigate, guard         not started   <- next
                    5  Screenshots                       not started
                    6  Mouse and keyboard                not started
@@ -32,7 +32,7 @@ The agent can open and list tabs in its own tab group. It cannot yet navigate, r
 |---|---|---|
 | `tabs_list` | 1, 3 | Done. Lists the "MCP Browser" group; `createIfEmpty` creates it. |
 | `tab_open` | 3 | Done. Opens a blank tab in the group, creating the group if needed. |
-| `tab_close` | 3 | **Missing.** Not in `relay/tools.ts`, `protocol.ts` or the extension's dispatch table. |
+| `tab_close` | 3 | Built 2026-11-21. Closes a tab in the group; any other id returns `NOT_IN_GROUP`. Browser check **NOT RUN**. |
 | `navigate` and later tools | 4+ | Not started. See [tool-roadmap.md](tool-roadmap.md) for difficulty, usefulness and build order. |
 
 ## Step by step
@@ -72,10 +72,10 @@ Done:
 - The extension runs calls one at a time, in arrival order, and always sends exactly one result.
 - `extension/src/tools.ts`: dispatch table (own keys only, so `toString` is refused).
 - `extension/src/tabs.ts`: the "MCP Browser" group (orange). The group id is cached in session storage, with a fallback lookup by title. New tabs open inactive, so they never steal focus.
+- `tab_close` (2026-11-21): `closeTab()` refuses any id not in the group, including the user's tabs and already-closed tabs, with `NOT_IN_GROUP`. It returns `closedTabId` plus the remaining tabs. Closing the last tab removes the group.
 
 Missing:
 
-- **`tab_close`**, including the `NOT_IN_GROUP` error for a tab outside the group.
 - The "runs inside a batch" flag on handlers (3.7). It is only needed from step 8.
 
 ### Step 12: Remote access: PARTIAL (built early)
@@ -117,13 +117,15 @@ Run on 2026-11-18:
 
 The curl checks ran against a separate relay on port 8799 with auto-launch off.
 
+Run on 2026-11-21, after adding `tab_close`: `npm run check` passes, and `npm test` gives 22 pass, 0 fail. On a relay at port 8799 (curl), `tools/list` lists `tabs_list`, `tab_open` and `tab_close`. `tab_close` with a string `tabId` returns an input validation error, and with no extension connected it returns `NO_EXTENSION`.
+
 **NOT RUN** (browser checks from the guide):
 
 - Step 2: relay stop and restart reconnects with no click; a terminated worker restarts within 30 s; a second profile shows "Replaced" and Reconnect takes the relay back; a browser restart reconnects.
-- Step 3: `tabs_list` `{"createIfEmpty": true}` opens a new window; disconnect during a slow call returns "Browser disconnected mid-call"; two calls at once run in order.
+- Step 3: `tab_close` with a group tab's id removes it, and with the id of one of your own tabs returns `NOT_IN_GROUP`; `tabs_list` `{"createIfEmpty": true}` opens a new window; disconnect during a slow call returns "Browser disconnected mid-call"; two calls at once run in order.
 - Popup: changing "Open agent tabs in" disconnects and shows Connect.
 
 ## Next
 
-1. Finish step 3: add `tab_close` (relay definition, `protocol.ts` name, extension handler that refuses tabs outside the group with `NOT_IN_GROUP`), then run the step 3 browser checks.
+1. Finish step 3: run the step 3 browser checks, including `tab_close`.
 2. Step 4: the debugger layer, `navigate`, the per-call guard and site policy.

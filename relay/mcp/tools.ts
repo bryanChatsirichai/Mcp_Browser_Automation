@@ -15,25 +15,35 @@ export const TOOLS: ToolDefinition[] = [
   {
     name: "tabs_list",
     description:
-      'List the tabs in the "MCP Browser" tab group, the only tabs the agent may use, with their ids, titles and URLs. ' +
-      "The user's other tabs are never listed. Call this first to learn which tab ids exist. " +
-      "Returns no tabs and tabGroupId null when there is no group (none opened yet, or the user closed it). " +
-      "Tab and group ids change when the group is recreated, so always use ids from the latest result.",
+      'List the tabs you can use: those in the "MCP Browser" tab group. The user\'s other tabs are never listed. ' +
+      "Call this first, and again whenever you are unsure which tabs exist. " +
+      "Returns { availableTabs: [{ tabId, title, url }], tabGroupId }; titles and URLs may be cut short. " +
+      "With no group (none opened yet, or the user closed it), availableTabs is empty and tabGroupId is null. " +
+      "A tab missing from the list was closed by the user: do not use its id again.",
     inputSchema: z.object({
       createIfEmpty: z
         .boolean()
         .optional()
-        .describe("Create the tab group with one blank tab when it has none."),
+        .describe("When there is no group, create one with a blank tab instead of returning an empty list."),
     }),
   },
   {
     name: "tab_open",
     description:
-      'Open a new blank tab in the "MCP Browser" tab group. Returns the new tab\'s id and every tab in the group. ' +
-      "When there is no group (first use, or the user closed its tabs or window), a new group is created where the user " +
-      "chose in the extension popup: their main window, a separate window, or an incognito window. " +
-      "A recreated group has a new tabGroupId and holds only the new tab; this is expected, not an error. " +
-      "Tabs that are no longer listed were closed by the user: do not reuse their ids.",
+      'Open a new blank tab in the "MCP Browser" tab group, creating the group if there is none. ' +
+      "Returns { tabId, availableTabs, tabGroupId }, where tabId is the new tab. " +
+      "If the user closed the group, a new group is created with a new tabGroupId and only the new tab: " +
+      "this is expected, not an error.",
     inputSchema: z.object({}),
+  },
+  {
+    name: "tab_close",
+    description:
+      'Close one tab in the "MCP Browser" tab group. Returns { closedTabId, availableTabs, tabGroupId }. ' +
+      "Fails with NOT_IN_GROUP for any tab outside the group, including the user's own tabs and tabs already closed. " +
+      "Closing the last tab removes the group; tab_open creates a new one.",
+    inputSchema: z.object({
+      tabId: z.number().int().describe("Id of the tab to close, from availableTabs."),
+    }),
   },
 ];

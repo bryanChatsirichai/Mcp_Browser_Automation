@@ -8,7 +8,7 @@
 //   relay     → call {id,tool}   extension → result {id, ok, data | error}   (one result per call id)
 
 /** Every tool the extension implements. Adding a name here without a handler is a compile error. */
-export type ToolName = "tabs_list" | "tab_open";
+export type ToolName = "tabs_list" | "tab_open" | "tab_close";
 
 export interface Hello {
   type: "hello";
@@ -57,4 +57,8 @@ export const CLOSE_REPLACED = 4409;
 
 export interface TabsListArgs {
   createIfEmpty?: boolean;
+}
+
+export interface TabCloseArgs {
+  tabId: number;
 }

@@ -8,8 +8,8 @@ import { McpServer } from "@modelcontextprotocol/server";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 import type { ToolName } from "../../extension/src/shared/protocol.ts";
-import { ExtensionError, sendCall } from "../browser/calls.ts";
-import { requireExtension } from "../browser/socket.ts";
+import { ExtensionError, sendCall } from "../ext/calls.ts";
+import { requireExtension } from "../ext/socket.ts";
 import { fence } from "../relay-lib.ts";
 import { log, shortId } from "../log.ts";
 import { TOOLS } from "./tools.ts";
@@ -84,9 +84,11 @@ async function runToolCall(
     // waits for the extension to connect, then sends the call to it and waits for a result frame
     log(`${tag}: waiting for extension`);
     const socket = await requireExtension();
+
     // sends the call to extrnal extension, which runs it and sends back a result frame
     log(`${tag}: sending to extension, tool ${tool} with args ${JSON.stringify(args)}`);
     const data = await sendCall(socket, id, tool, args);
+    
     log(`${tag}: ok in ${Date.now() - started}ms`);
     // the relay does not know what the tool did, so it just returns the data to the MCP client
     log(`${tag}: result ${JSON.stringify(data, null, 2)}`);

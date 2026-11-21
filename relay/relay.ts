@@ -8,12 +8,13 @@
 //
 //   relay.ts           POST /mcp → route: local-only gate → handleMcp
 //   mcp/server.ts      handleMcp → McpServer validates args (mcp/tools.ts) → runToolCall
-//   browser/socket.ts  requireExtension (browser/launch.ts starts the browser if needed)
-//   browser/calls.ts   sendCall → WebSocket {type:'call', id} → extension background.ts
-//   browser/socket.ts  {type:'result', id} frame → browser/calls.ts finishCallWithResult
+//   ext/socket.ts      requireExtension (browser/launch.ts starts the browser if needed)
+//   ext/calls.ts       sendCall → WebSocket {type:'call', id} → extension background.ts
+//   ext/socket.ts      {type:'result', id} frame → ext/calls.ts finishCallWithResult
 //   mcp/server.ts      runToolCall → fence (relay-lib.ts) → MCP response
 //
-// Folders: mcp/ is what the MCP client sees; browser/ is the link to the extension.
+// Folders: mcp/ is what the MCP client sees; ext/ is the link to the extension (the /ext WebSocket);
+// browser/ starts the browser process.
 
 // main() starts
 //   → log "starting"
@@ -33,14 +34,14 @@
 // Claude Code ──── MCP over HTTP ────► relay ◄──── WebSocket ──── Chrome extension
 //            POST /mcp                         ws://…/ext
 //            handleRequest                     handleUpgrade
-//            mcp/server.ts                     browser/socket.ts
+//            mcp/server.ts                     ext/socket.ts
 
 import http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocketServer } from "ws";
 import { BROWSER_LAUNCH } from "./browser/launch.ts";
-import { acceptExtension } from "./browser/socket.ts";
+import { acceptExtension } from "./ext/socket.ts";
 import { handleMcp, VERSION } from "./mcp/server.ts";
 import { isLocal } from "./relay-lib.ts";
 import { log } from "./log.ts";

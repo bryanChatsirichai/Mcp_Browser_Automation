@@ -3,8 +3,8 @@
 
 import { ToolError } from "../shared/errors.js";
 import { log } from "../shared/log.js";
-import type { TabsListArgs, ToolName } from "../shared/protocol.js";
-import { ensureGroup, groupTabs, openTab, tabContext } from "./tabs.js";
+import type { TabCloseArgs, TabsListArgs, ToolName } from "../shared/protocol.js";
+import { closeTab, ensureGroup, groupTabs, openTab, tabContext } from "./tabs.js";
 
 /** Returns plain data; the relay turns it into JSON text for the model. */
 type Handler = (args: Record<string, unknown>) => Promise<object>;
@@ -19,14 +19,21 @@ const handlers: Record<ToolName, Handler> = {
     const tab = await openTab();
     return { tabId: tab.id, ...(await tabContext(await groupTabs())) };
   },
+
+  async tab_close(args) {
+    const { tabId } = args as unknown as TabCloseArgs;
+    await closeTab(tabId);
+    return { closedTabId: tabId, ...(await tabContext(await groupTabs())) };
+  },
 };
 
-/** The single path from a tool name to its handler. */
+/**
+ * Runs the handler whose name matches `tool` and returns its data.
+ */
 export async function runTool(
   tool: string,
   args: Record<string, unknown>,
 ): Promise<object> {
-  // Own keys only: a tool named "toString" must not reach Object.prototype.
   const handler = Object.hasOwn(handlers, tool)
     ? handlers[tool as ToolName]
     : undefined;

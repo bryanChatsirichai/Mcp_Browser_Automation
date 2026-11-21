@@ -5,6 +5,7 @@
 //   groupTabs   the group's tabs (never creates the group)
 //   ensureGroup the group's tabs, creating the group when there is none
 //   openTab     a new tab in the group, creating the group when there is none
+//   closeTab    closes a tab in the group; refuses any other tab with NOT_IN_GROUP
 //   tabContext  the tab list returned to the model
 // Creating a group: createGroup → createFirstGroupTab (where, per tabWindow) → group and title it
 
@@ -143,6 +144,19 @@ export async function openTab(): Promise<chrome.tabs.Tab> {
   }
   await chrome.tabs.group({ groupId: group.id, tabIds: tab.id });
   return tab;
+}
+
+/** Closes a tab in the group. Any other tab, including one that no longer exists, is refused. */
+export async function closeTab(tabId: number): Promise<void> {
+  const tabs = await groupTabs();
+  if (!tabs.some((tab) => tab.id === tabId)) {
+    throw new ToolError(
+      "NOT_IN_GROUP",
+      `Tab ${tabId} is not in the "${GROUP_TITLE}" tab group, so it cannot be closed. ` +
+        "Call tabs_list for the current tab ids.",
+    );
+  }
+  await chrome.tabs.remove(tabId);
 }
 
 /** The group's tabs, creating the group with one blank tab when it has none. */

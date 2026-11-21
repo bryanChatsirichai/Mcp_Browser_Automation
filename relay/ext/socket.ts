@@ -20,7 +20,7 @@ import {
   browserWasLaunched,
   launchBrowserAndWait,
   onExtensionConnected,
-} from "./launch.ts";
+} from "../browser/launch.ts";
 import {
   ExtensionError,
   failCallsOnSocket,
