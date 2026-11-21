@@ -42,6 +42,7 @@ async function runCall(
     `[runCall:] ${tag}: ${result.ok ? "ok" : result.error.code} in ${elapsed}ms`,
   );
   const message: ToRelay = result;
+  log(`[flow] extension -> relay: call ${shortId(call.id)} ${result.ok ? "ok" : result.error.code}`);
   webSocket.send(JSON.stringify(message));
 }
 

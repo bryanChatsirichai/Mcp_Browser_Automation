@@ -2,6 +2,7 @@
 // schema, and validates the arguments before they reach these handlers.
 
 import { ToolError } from "../shared/errors.js";
+import { log } from "../shared/log.js";
 import type { TabsListArgs, ToolName } from "../shared/protocol.js";
 import { ensureGroup, groupTabs, openTab, tabContext } from "./tabs.js";
 
@@ -35,5 +36,8 @@ export async function runTool(
       `This browser does not support the tool "${tool}". Update the extension.`,
     );
   }
-  return handler(args);
+  log(`[flow] extension -> browser: ${tool}`);
+  const data = await handler(args);
+  log(`[flow] browser -> extension: ${tool} done`);
+  return data;
 }

@@ -78,6 +78,7 @@ async function runToolCall(
   const id = randomUUID();
   const tag = `[runToolCall:] call ${shortId(id)} ${tool}`;
   const started = Date.now();
+  log(`[flow] agent -> relay: call ${shortId(id)} ${tool}`);
   log(`${tag}: start`);
   try {
     // waits for the extension to connect, then sends the call to it and waits for a result frame
@@ -89,6 +90,7 @@ async function runToolCall(
     log(`${tag}: ok in ${Date.now() - started}ms`);
     // the relay does not know what the tool did, so it just returns the data to the MCP client
     log(`${tag}: result ${JSON.stringify(data, null, 2)}`);
+    log(`[flow] relay -> agent: call ${shortId(id)} ok in ${Date.now() - started}ms`);
     return {
       content: [{ type: "text", text: fence(JSON.stringify(data, null, 2)) }],
     };
@@ -99,6 +101,7 @@ async function runToolCall(
         : new ExtensionError("ERROR", String(error), false);
     log(`${tag}: ${known.code} in ${Date.now() - started}ms`);
     const message = known.fromBrowser ? fence(known.message) : known.message;
+    log(`[flow] relay -> agent: call ${shortId(id)} error ${known.code}`);
     return {
       isError: true,
       content: [{ type: "text", text: `Error ${known.code}: ${message}` }],

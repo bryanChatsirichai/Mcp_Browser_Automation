@@ -70,6 +70,7 @@ export function sendCall(
         outcome.ok ? resolve(outcome.data) : reject(outcome.error),
     });
     const call: Call = { type: "call", id, tool, args };
+    log(`[flow] relay -> extension: call ${shortId(id)} ${tool}`);
     socket.send(JSON.stringify(call));
   });
 }
