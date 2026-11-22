@@ -15,30 +15,29 @@ import {
   saveSettings,
 } from "../shared/settings.js";
 import type { Settings, Status, TabWindow } from "../shared/settings.js";
+import { claudeCodeCommand, STATUS_COPY } from "./view.js";
 
 const urlInput = document.querySelector<HTMLInputElement>("#url")!;
 const connectButton = document.querySelector<HTMLButtonElement>("#connect")!;
-const statusLine = document.querySelector<HTMLParagraphElement>("#status")!;
-const statusDot = document.querySelector<HTMLSpanElement>("#dot")!;
-const startBox = document.querySelector<HTMLDivElement>("#start")!;
+const statusTitle = document.querySelector<HTMLParagraphElement>("#status-title")!;
+const statusDetail =
+  document.querySelector<HTMLParagraphElement>("#status-detail")!;
+const relayHost = document.querySelector<HTMLSpanElement>("#relay-host")!;
+const startBox = document.querySelector<HTMLElement>("#start")!;
+const clientBox = document.querySelector<HTMLElement>("#client")!;
 const commandText = document.querySelector<HTMLElement>("#command")!;
-const copyButton = document.querySelector<HTMLButtonElement>("#copy")!;
+const clientCommandText =
+  document.querySelector<HTMLElement>("#client-command")!;
+const advanced = document.querySelector<HTMLDetailsElement>("#advanced")!;
+const copyButtons = [
+  ...document.querySelectorAll<HTMLButtonElement>("button[data-copy]"),
+];
 const tabWindowInputs = [
   ...document.querySelectorAll<HTMLInputElement>('input[name="tabWindow"]'),
 ];
 const incognitoWarning =
   document.querySelector<HTMLParagraphElement>("#incognito-warning")!;
 const TAB_WINDOWS: readonly TabWindow[] = ["current", "separate", "incognito"];
-
-const STATUS_TEXT: Record<Status["state"], string> = {
-  disconnected: "Not connected.",
-  connecting: "Connecting…",
-  connected: "Connected.",
-  unreachable: "Relay not responding, retrying automatically.",
-  unauthorized: "The relay refused this browser.",
-  replaced:
-    "Another browser took over the relay. Press Reconnect to take it back.",
-};
 
 /** The settings as last saved; the URL field may hold an unsaved draft. */
 let savedSettings: Settings;
@@ -50,7 +49,9 @@ type ButtonAction = "Connect" | "Reconnect" | "Cancel" | "Disconnect";
 for (const input of tabWindowInputs) {
   input.addEventListener("change", () => onTabWindowChange(input));
 }
-copyButton.addEventListener("click", () => void onCopyClick());
+for (const button of copyButtons) {
+  button.addEventListener("click", () => void onCopyClick(button));
+}
 connectButton.addEventListener("click", () => void onConnectClick());
 urlInput.addEventListener("input", render);
 chrome.storage.onChanged.addListener(onStorageChanged);
@@ -66,6 +67,8 @@ async function start(): Promise<void> {
   ]);
   urlInput.value = savedSettings.url;
   commandText.textContent = command;
+  document.querySelector("#version")!.textContent =
+    `v${chrome.runtime.getManifest().version}`;
   render();
 }
 
@@ -79,15 +82,30 @@ function render(): void {
   connectButton.disabled =
     (action === "Connect" || action === "Reconnect") && !urlOk;
 
-  statusDot.dataset.state = workerStatus.state;
-  statusLine.textContent =
-    urlOk || draftUrl === ""
-      ? STATUS_TEXT[workerStatus.state] +
-        (workerStatus.state === "connected" && workerStatus.detail
-          ? ` ${workerStatus.detail}`
-          : "")
-      : "Enter an http:// or https:// URL.";
-  startBox.hidden = workerStatus.state === "connected";
+  const connected = workerStatus.state === "connected";
+  const copy = STATUS_COPY[workerStatus.state];
+  const urlInvalid = !urlOk && draftUrl !== "";
+
+  connectButton.dataset.kind =
+    action === "Disconnect" || action === "Cancel" ? "secondary" : "primary";
+  document.body.dataset.state = workerStatus.state;
+  statusTitle.textContent = copy.title;
+  statusDetail.textContent = urlInvalid
+    ? "Enter an http:// or https:// URL."
+    : copy.detail;
+  statusDetail.classList.toggle("error", urlInvalid);
+  // Keep a bad URL visible: the message points at a field inside Advanced.
+  if (urlInvalid) {
+    advanced.open = true;
+  }
+  relayHost.textContent = hostOf(savedSettings.url);
+  // A refused or replaced browser reached a running relay, so starting one is no help there.
+  startBox.hidden =
+    connected ||
+    workerStatus.state === "unauthorized" ||
+    workerStatus.state === "replaced";
+  clientBox.hidden = !connected;
+  clientCommandText.textContent = claudeCodeCommand(savedSettings.url);
   for (const input of tabWindowInputs) {
     input.checked = input.value === savedSettings.tabWindow;
   }
@@ -124,15 +142,20 @@ function onTabWindowChange(input: HTMLInputElement): void {
   }
 }
 
-async function onCopyClick(): Promise<void> {
+/** Copies the text of the <code> named by the button's data-copy attribute. */
+async function onCopyClick(button: HTMLButtonElement): Promise<void> {
+  const label = button.querySelector<HTMLSpanElement>(".copy-label")!;
+  const source = document.getElementById(button.dataset.copy ?? "");
   try {
-    await navigator.clipboard.writeText(commandText.textContent ?? "");
-    copyButton.textContent = "Copied";
+    await navigator.clipboard.writeText(source?.textContent ?? "");
+    button.dataset.copied = "";
+    label.textContent = "Copied";
   } catch {
-    copyButton.textContent = "Failed";
+    label.textContent = "Failed";
   }
   setTimeout(() => {
-    copyButton.textContent = "Copy";
+    delete button.dataset.copied;
+    label.textContent = "Copy";
   }, 1500);
 }
 
@@ -165,6 +188,15 @@ function onStorageChanged(
     return;
   }
   render();
+}
+
+/** "127.0.0.1:8787" for the label under the relay node; empty if the URL doesn't parse. */
+function hostOf(value: string): string {
+  try {
+    return new URL(value).host;
+  } catch {
+    return "";
+  }
 }
 
 function isHttpUrl(value: string): boolean {
