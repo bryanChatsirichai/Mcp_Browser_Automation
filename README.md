@@ -50,8 +50,9 @@ The WebSocket arrow points from the extension to the relay on purpose: a browser
 | `tab_open` | Opens a new blank tab in the group |
 | `tab_close` | Closes a tab in the group |
 | `navigate` | Loads a URL in a group tab and waits for it to finish |
+| `get_page_text` | Reads a page's text, preferring the main content |
 
-More are planned (page text, screenshots, clicks, forms). See [doc/Status/tool-roadmap.md](doc/Status/tool-roadmap.md).
+More are planned (screenshots, page structure, clicks, forms). See [doc/Status/tool-roadmap.md](doc/Status/tool-roadmap.md).
 
 ## Setup
 
@@ -113,7 +114,7 @@ relay/                 the MCP server (Node, no build step)
   browser/             starts the browser when needed
 extension/             the browser extension (TypeScript, compiled to dist/)
   src/connection/      the WebSocket to the relay, one call at a time
-  src/tools/           tool handlers and the tab group
+  src/tools/           tool handlers, the tab group, page reading
   src/policy/          the site policy: which URLs are allowed
   src/cdp/             the Chrome DevTools Protocol link to each tab
   src/popup/           the popup window

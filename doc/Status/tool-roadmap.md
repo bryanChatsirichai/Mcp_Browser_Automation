@@ -1,6 +1,6 @@
 # Tool roadmap
 
-The order in which to build the remaining 12 tools, ranked by difficulty and usefulness within each category. For what is built so far, see [README.md](README.md).
+The order in which to build the tools after the tab tools, ranked by difficulty and usefulness within each category. Built tools are marked **Built**. For what is built so far, see [README.md](README.md).
 
 Difficulty and usefulness are estimates based on the Chrome and CDP APIs each tool needs. None of them were measured. Difficulty runs from ★☆☆☆☆ (an afternoon) to ★★★★★ (the hardest piece in the project).
 
@@ -14,7 +14,7 @@ Tool definitions live in [relay/mcp/tools.ts](../../relay/mcp/tools.ts), and the
 
 Two pieces are not tools themselves, but most tools depend on them:
 
-1. **Debugger attach and `guard()`** (build guide step 4). Every tool except the tab tools needs them. Attaching needs the `debugger` permission, which the manifest does not request yet. `guard()` checks for restricted URL schemes, checks that the tab is in the group, and applies the per-tool URL policy.
+1. **Debugger attach and the guard** (build guide step 4). **Built**: `extension/src/cdp/cdp.ts` (`sendCdpCommand`), and `checkToolCall` in `tools.ts`, which checks that the tab is in the group and applies the site policy (`extension/src/policy/policy.ts`) before every tool.
 2. **The ref system in `read_page`** (step 7). `find`, `form_input`, `file_upload` and `computer`'s `scroll_to` action all take `ref_N` ids. Decide the ref format and lifetime before building any of these tools.
 
 ## Tabs
@@ -25,8 +25,8 @@ All three tab tools are built: `tabs_list`, `tab_open` and `tab_close`. The only
 
 | Order | Tool | Difficulty | Usefulness | Notes |
 |---|---|---|---|---|
-| 1 | `navigate` | ★★☆☆☆ | Essential | Changing the URL is easy. The work is the guard, and waiting reliably for the page to load, including after back and forward. |
-| 2 | `get_page_text` | ★★☆☆☆ | High | Run a script in the page and truncate at 50k characters. The article-priority heuristic is the only fiddly part. |
+| 1 | `navigate` | ★★☆☆☆ | Essential | **Built**, without back and forward. Changing the URL is easy; the work was the guard and waiting reliably for the page to load. |
+| 2 | `get_page_text` | ★★☆☆☆ | High | **Built**. Runs a script in the page; no character limit in the current implementation. The article-priority heuristic is the only fiddly part. |
 | 3 | `javascript_tool` | ★★★☆☆ | Very high | `Runtime.evaluate` with `replMode` and `awaitPromise`. Most of the work is serializing results. The most security-sensitive tool in the list. |
 | 4 | `read_page` | ★★★★☆ | Essential | Accessibility tree, refs that stay stable across calls, and `filter`, `depth`, `ref_id` and `max_chars`. Four other tools depend on it. |
 | 5 | `find` | ★★★★☆ | Medium | Matching natural language well is hard. `read_page` with a filter covers most cases. |
@@ -58,11 +58,11 @@ Claude in Chrome has no equivalent of these tools.
 ## Build order
 
 ```text
- 1  navigate + guard()               step 4   <- unlocks everything below
- 2  computer: screenshot             step 5
+ 1  navigate + guard                 step 4   built
+ 2  computer: screenshot             step 5   <- next
  3  computer: clicks, keys, scroll   step 6
  4  read_page (refs)                 step 7   <- unlocks find, form_input, file_upload
- 5  get_page_text                    step 7
+ 5  get_page_text                    step 7   built (moved ahead of 2 to 4)
  6  javascript_tool                  step 8
  7  form_input                       step 8
  8  browser_batch                    step 8

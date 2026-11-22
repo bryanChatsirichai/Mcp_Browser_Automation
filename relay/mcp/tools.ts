@@ -64,4 +64,15 @@ export const TOOLS: ToolDefinition[] = [
         .describe("Id of the tab to navigate, from availableTabs. Defaults to the group's first tab."),
     }),
   },
+  {
+    name: "get_page_text",
+    description:
+      "Read the visible text of a page in a tab of the \"MCP Browser\" tab group, preferring the main content " +
+      "over menus and footers. Use it to read or summarise a page; it does not list buttons or links. " +
+      "Returns { tabId, url, title, text } with the full text; very long pages can produce a very large result. " +
+      "Fails with BLOCKED when the site policy refuses the page the tab is on, and NOT_IN_GROUP for any tab outside the group.",
+    inputSchema: z.object({
+      tabId: z.number().int().describe("Id of the tab to read, from availableTabs."),
+    }),
+  },
 ];

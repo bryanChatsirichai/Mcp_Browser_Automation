@@ -4,8 +4,15 @@
 import { addScheme, checkUrl } from "../policy/policy.js";
 import { ToolError } from "../shared/errors.js";
 import { log } from "../shared/log.js";
-import type { NavigateArgs, TabCloseArgs, TabsListArgs, ToolName } from "../shared/protocol.js";
+import type {
+  GetPageTextArgs,
+  NavigateArgs,
+  TabCloseArgs,
+  TabsListArgs,
+  ToolName,
+} from "../shared/protocol.js";
 import { loadSettings } from "../shared/settings.js";
+import { getPageText } from "./page.js";
 import {
   checkInGroup,
   closeTab,
@@ -47,6 +54,11 @@ const handlers: Record<ToolName, Handler> = {
       stillLoading,
       ...(await tabContext(await groupTabs())),
     };
+  },
+
+  async get_page_text(args) {
+    const { tabId } = args as unknown as GetPageTextArgs;
+    return { tabId, ...(await getPageText(tabId)) };
   },
 };
 

@@ -10,7 +10,7 @@
 //   relay     → call {id,tool}   extension → result {id, ok, data | error}   (one result per call id)
 
 /** Every tool the extension implements. Adding a name here without a handler is a compile error. */
-export type ToolName = "tabs_list" | "tab_open" | "tab_close" | "navigate";
+export type ToolName = "tabs_list" | "tab_open" | "tab_close" | "navigate" | "get_page_text";
 
 export interface Hello {
   type: "hello";
@@ -68,4 +68,9 @@ export interface TabCloseArgs {
 export interface NavigateArgs {
   url: string;
   tabId?: number;
+}
+
+/** tabId is required: checkToolCall checks the tab's current URL only when one is given. */
+export interface GetPageTextArgs {
+  tabId: number;
 }
