@@ -73,4 +73,5 @@ export interface NavigateArgs {
 /** tabId is required: checkToolCall checks the tab's current URL only when one is given. */
 export interface GetPageTextArgs {
   tabId: number;
+  offset?: number;
 }

@@ -78,12 +78,19 @@ export const TOOLS: ToolDefinition[] = [
       `Read the visible text of the page in a tab of ${GROUP}: the main content (<main> or <article>) ` +
       "when the page has one, else the whole page. Use it to read or summarise a page; it does not list buttons or links, " +
       "and text inside iframes is not included. " +
-      "Returns { tabId, url, title, text } with the full text; very long pages can produce a very large result. " +
+      "Returns { tabId, url, title, text, nextOffset }, with up to 50,000 characters of text. " +
+      "If nextOffset is present, more text remains: call again with offset set to nextOffset. " +
       "Fails with BLOCKED, CDP_ERROR for pages the browser does not let extensions read (such as the extension store), " +
       "or NOT_IN_GROUP for any tab outside the group. " +
       BLOCKED,
     inputSchema: z.object({
       tabId: z.number().int().describe("Id of the tab to read, from availableTabs."),
+      offset: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe("Character to start from: the nextOffset of the previous call. Defaults to 0."),
     }),
   },
 ];

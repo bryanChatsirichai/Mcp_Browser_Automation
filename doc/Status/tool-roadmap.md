@@ -26,7 +26,7 @@ All three tab tools are built: `tabs_list`, `tab_open` and `tab_close`. The only
 | Order | Tool | Difficulty | Usefulness | Notes |
 |---|---|---|---|---|
 | 1 | `navigate` | ★★☆☆☆ | Essential | **Built**, without back and forward. Changing the URL is easy; the work was the guard and waiting reliably for the page to load. |
-| 2 | `get_page_text` | ★★☆☆☆ | High | **Built**. Runs a script in the page; no character limit in the current implementation. The article-priority heuristic is the only fiddly part. |
+| 2 | `get_page_text` | ★★☆☆☆ | High | **Built**. Runs a script in the page; returns 50,000 characters per call, with `offset` for the rest. The article-priority heuristic is the only fiddly part. |
 | 3 | `javascript_tool` | ★★★☆☆ | Very high | `Runtime.evaluate` with `replMode` and `awaitPromise`. Most of the work is serializing results. The most security-sensitive tool in the list. |
 | 4 | `read_page` | ★★★★☆ | Essential | Accessibility tree, refs that stay stable across calls, and `filter`, `depth`, `ref_id` and `max_chars`. Four other tools depend on it. |
 | 5 | `find` | ★★★★☆ | Medium | Matching natural language well is hard. `read_page` with a filter covers most cases. |

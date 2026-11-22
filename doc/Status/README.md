@@ -34,7 +34,7 @@ The agent can open, list and close tabs in its own tab group, load pages, and re
 | `tab_open` | Opens a new blank tab in the group. |
 | `tab_close` | Closes one of the agent's tabs. Refuses any other tab. |
 | `navigate` | Loads a URL in one of the agent's tabs and waits for it. Blocked sites are refused, and a page that cannot load is reported as an error. |
-| `get_page_text` | Returns the text of the page a tab is on, preferring the main content over menus. No length limit (see Beyond the guide). |
+| `get_page_text` | Returns the text of the page a tab is on, preferring the main content over menus. Long pages are read 50,000 characters at a time (see Beyond the guide). |
 | Later tools | Not started. See [tool-roadmap.md](tool-roadmap.md) for the build order. |
 
 ## Step by step
@@ -98,7 +98,7 @@ Missing:
 
 Done:
 
-- `get_page_text` (`extension/src/tools/page.ts`): CDP `Runtime.evaluate` returns the text of `<main>`/`<article>`, else `<body>`, with no length limit (see Beyond the guide). `tabId` is required so the guard always checks the page's URL.
+- `get_page_text` (`extension/src/tools/page.ts`): CDP `Runtime.evaluate` returns the text of `<main>`/`<article>`, else `<body>`, 50,000 characters per call; `offset` and `nextOffset` read the rest (see Beyond the guide). `tabId` is required so the guard always checks the page's URL.
 
 Missing:
 
@@ -123,7 +123,7 @@ These were added on purpose and are not in the step files:
 - **"Open agent tabs in" setting** (`tabWindow`): the main window, a separate window (the default), or an incognito window. It applies when the group is created; an existing group stays where it is. Incognito needs "Allow in Incognito", and the tool returns `INCOGNITO_NOT_ALLOWED` without it.
 - **Changing that setting disconnects.** The popup saves `enabled: false`, so the user must press Connect again. The guide's step 2.6 assumes a settings change reconnects; this one turns the connection off instead.
 - **Site policy is simpler than the guide's.** There is no "use my other tabs" setting, so the agent can only ever use its own group. Site access has its own popup section rather than living inside Advanced.
-- **`get_page_text` has no length limit** (2026-11-22). The guide caps it at 50,000 characters. Chosen for simplicity, with the risk accepted: a very long page fills the model's context, or the MCP client cuts or refuses the result. If that happens, add back a cap, or an `offset` argument so the model can read the page in parts.
+- **`get_page_text` reads long pages in parts.** The guide cuts the text at 50,000 characters. Here each call returns up to 50,000 characters plus `nextOffset`, and the model passes it back as `offset` to read on. A first version had no limit: the 131k-character Wikipedia "Nvidia" article was too big for one Claude Code tool result and had to be read from a saved file.
 - **Tool descriptions** for `tabs_list` and `tab_open` say that a closed group is recreated with a new `tabGroupId`, and that ids of closed tabs must not be reused.
 
 ## Verification

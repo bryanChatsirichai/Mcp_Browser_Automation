@@ -57,8 +57,8 @@ const handlers: Record<ToolName, Handler> = {
   },
 
   async get_page_text(args) {
-    const { tabId } = args as unknown as GetPageTextArgs;
-    return { tabId, ...(await getPageText(tabId)) };
+    const { tabId, offset } = args as unknown as GetPageTextArgs;
+    return { tabId, ...(await getPageText(tabId, offset)) };
   },
 };
 
