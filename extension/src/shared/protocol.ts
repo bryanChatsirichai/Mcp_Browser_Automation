@@ -4,11 +4,13 @@
 //
 // Message sequence on one socket:
 //   extension → hello            relay → ready        (handshake; relay closes 4401 if no hello in 5 s)
-//   extension → ping             relay → pong         (keep-alive; the extension also answers a ping)
+//   extension → ping             relay → pong         (keep-alive; only the extension pings)
+//
+// ping/pong are JSON messages, not WebSocket control frames: the browser WebSocket API cannot send those.
 //   relay     → call {id,tool}   extension → result {id, ok, data | error}   (one result per call id)
 
 /** Every tool the extension implements. Adding a name here without a handler is a compile error. */
-export type ToolName = "tabs_list" | "tab_open";
+export type ToolName = "tabs_list" | "tab_open" | "tab_close" | "navigate" | "get_page_text";
 
 export interface Hello {
   type: "hello";
@@ -43,8 +45,8 @@ export type Result =
   | { type: "result"; id: string; ok: true; data: unknown }
   | { type: "result"; id: string; ok: false; error: ErrorBody };
 
-export type ToRelay = Hello | Ping | Pong | Result;
-export type ToExtension = Ready | Ping | Pong | Call;
+export type ToRelay = Hello | Ping | Result;
+export type ToExtension = Ready | Pong | Call;
 
 // WebSocket close codes. Both sides branch on them, so they are defined once here.
 
@@ -57,4 +59,19 @@ export const CLOSE_REPLACED = 4409;
 
 export interface TabsListArgs {
   createIfEmpty?: boolean;
+}
+
+export interface TabCloseArgs {
+  tabId: number;
+}
+
+export interface NavigateArgs {
+  url: string;
+  tabId?: number;
+}
+
+/** tabId is required: checkToolCall checks the tab's current URL only when one is given. */
+export interface GetPageTextArgs {
+  tabId: number;
+  offset?: number;
 }

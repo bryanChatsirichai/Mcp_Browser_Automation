@@ -7,9 +7,13 @@
 //   connection/calls.ts       runs each call from the relay, one at a time, and sends one result back
 //   tools/tools.ts            the handler for each tool name
 //   tools/tabs.ts             the Chrome work: the "MCP Browser" tab group and its tabs
+//   tools/page.ts             reading a page's content
+//   policy/policy.ts          which URLs the agent may use (checked before every tool)
+//   cdp/cdp.ts                the DevTools Protocol link to each tab (chrome.debugger)
 // Logs: chrome://extensions › Browser Bridge › Inspect views: service worker. Lines about a call
 // carry the same short call id as the relay log.
 
+import { detachCdpFromAllTabs } from "./cdp/cdp.js";
 import { reconnectIfAllowed, restartWithNewSettings } from "./connection/connection.js";
 import { connectionChanged } from "./shared/settings.js";
 import type { Settings } from "./shared/settings.js";
@@ -43,6 +47,10 @@ function onStorageChanged(
   const after = changes.settings.newValue as Partial<Settings> | undefined;
   if (connectionChanged(before, after)) {
     void restartWithNewSettings();
+    // Disconnecting releases every tab, thus "debugging this browser" bar goes away.
+    if (!after?.enabled) {
+      void detachCdpFromAllTabs();
+    }
   }
 }
 

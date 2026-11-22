@@ -5,10 +5,10 @@
 // state that must survive lives in chrome.storage, and a cold start reconnects by itself.
 //
 // Lifecycle of one connection:
-//   connect → socket opens: send hello, start pinging (onOpen)
-//     → relay answers ready: connected, retry delay reset (onMessage → onReady)
-//     → calls arrive: handed to calls.ts (onMessage → enqueueCall)
-//     → closes, or is dropped when the relay goes silent (handleClose)
+//   connect → socket opens: send hello, start pinging (onRelaySocketOpen)
+//     → relay answers ready: connected, retry delay reset (onRelayMessage → onReady)
+//     → calls arrive: handed to calls.ts (onRelayMessage → enqueueCall)
+//     → closes, or is dropped when the relay goes silent (onRelaySocketClosed)
 //         4401 refused / 4409 replaced: stop, the user must act; otherwise scheduleRetry
 //   disconnect: closed on purpose after a settings change, with no retry.
 
@@ -27,7 +27,7 @@ import type { Settings } from "../shared/settings.js";
 const READY_TIMEOUT_MS = 8_000;
 const PING_INTERVAL_MS = 20_000;
 /** No frame from the relay for this long means it is gone, even if the socket still looks open. */
-const SILENCE_LIMIT_MS = 30_000;
+const RELAY_SILENCE_LIMIT_MS = 30_000;
 const FIRST_RETRY_MS = 1_000;
 const MAX_RETRY_MS = 30_000;
 /** The close code for a connection that ended without a closing handshake. */
@@ -103,13 +103,15 @@ async function connect(): Promise<void> {
     log(`[connect:] no ready within ${READY_TIMEOUT_MS}ms; dropping`);
     dropConnection(webSocket);
   }, READY_TIMEOUT_MS);
-  webSocket.onopen = () => onOpen(webSocket, settings);
-  webSocket.onmessage = (event) => onMessage(webSocket, settings, event.data);
-  webSocket.onclose = (event) => void handleClose(webSocket, event.code);
+  webSocket.onopen = () => onRelaySocketOpen(webSocket, settings);
+  webSocket.onmessage = (event) =>
+    onRelayMessage(webSocket, settings, event.data);
+  webSocket.onclose = (event) =>
+    void onRelaySocketClosed(webSocket, event.code);
 }
 
 /** Says hello and starts the keep-alive. */
-function onOpen(webSocket: WebSocket, settings: Settings): void {
+function onRelaySocketOpen(webSocket: WebSocket, settings: Settings): void {
   lastHeardAt = Date.now();
   send(webSocket, {
     type: "hello",
@@ -120,7 +122,8 @@ function onOpen(webSocket: WebSocket, settings: Settings): void {
   pingTimer = setInterval(() => pingOrDrop(webSocket), PING_INTERVAL_MS);
 }
 
-function onMessage(
+/** Handles a message from the relay. Any frame, pong included, proves the relay is alive. */
+function onRelayMessage(
   webSocket: WebSocket,
   settings: Settings,
   data: unknown,
@@ -131,8 +134,6 @@ function onMessage(
   console.log("Received message from relay:", message);
   if (message?.type === "ready") {
     onReady(settings);
-  } else if (message?.type === "ping") {
-    send(webSocket, { type: "pong" });
   } else if (message?.type === "call") {
     enqueueCall(webSocket, message);
   }
@@ -150,7 +151,7 @@ function onReady(settings: Settings): void {
 function pingOrDrop(webSocket: WebSocket): void {
   log("[pingOrDrop:] checking relay silence");
   const silentFor = Date.now() - lastHeardAt;
-  if (silentFor > SILENCE_LIMIT_MS) {
+  if (silentFor > RELAY_SILENCE_LIMIT_MS) {
     log(`[pingOrDrop:] relay silent for ${silentFor}ms; dropping`);
     dropConnection(webSocket);
   } else {
@@ -166,17 +167,21 @@ function pingOrDrop(webSocket: WebSocket): void {
 function dropConnection(webSocket: WebSocket): void {
   webSocket.onclose = null;
   webSocket.close();
-  void handleClose(webSocket, ABNORMAL_CLOSURE);
+  void onRelaySocketClosed(webSocket, ABNORMAL_CLOSURE);
 }
 
-async function handleClose(webSocket: WebSocket, code: number): Promise<void> {
+/** Saves the new status, then retries unless the relay refused or replaced this browser. */
+async function onRelaySocketClosed(
+  webSocket: WebSocket,
+  code: number,
+): Promise<void> {
   // An old socket that was already replaced or closed on purpose: nothing to do.
   if (relaySocket !== webSocket) {
     return;
   }
   relaySocket = null;
   stopConnectionTimers();
-  log(`[handleClose:] closed with code ${code}`);
+  log(`[onRelaySocketClosed:] closed with code ${code}`);
 
   // Refused or replaced: retrying would fail the same way, so wait for the user.
   if (code === CLOSE_UNAUTHORIZED) {
@@ -257,7 +262,6 @@ function parseToExtension(data: unknown): ToExtension | null {
   }
   switch (message.type) {
     case "ready":
-    case "ping":
     case "pong":
       return message as unknown as ToExtension;
     case "call":

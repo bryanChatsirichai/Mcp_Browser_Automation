@@ -1,22 +1,22 @@
 # Build status
 
-Where this implementation stands against the [build guide](../Build-guide/README.md), as of 2026-11-18. Every claim below was checked against the code in `relay/`, `extension/` and `test/`. Checks marked **NOT RUN** still need a person in the browser.
+Where this implementation stands against the [build guide](../Build-guide/README.md), as of 2026-11-22. Every claim below was checked against the code in `relay/`, `extension/` and `test/`. Checks marked **NOT RUN** still need a person in the browser.
 
 ## Summary
 
-Steps 0 to 2 are complete. Step 3 is mostly done: the round trip works end to end, but the `tab_close` tool is missing. Steps 4 to 14 have not started, apart from two pieces of step 12 (browser auto-launch and the build stamp) that were built early.
+Steps 0 to 2 are complete. Steps 3 and 4 are built, but their browser checks have not been run. Step 7 has its first tool, `get_page_text`. Two pieces of step 12 (browser auto-launch and the build stamp) were built early.
 
-The agent can open and list tabs in its own tab group. It cannot yet navigate, read or click a page.
+The agent can open, list and close tabs in its own tab group, load pages, and read their text. It cannot yet see (screenshot) or click a page.
 
 ```text
  FOUNDATION        0  Project skeleton                  DONE
                    1  Relay speaks MCP                  DONE
                    2  Extension connects                DONE
-                   3  Round trip, first tools           PARTIAL  (tab_close missing)
- DRIVING A PAGE    4  Debugger, navigate, guard         not started   <- next
-                   5  Screenshots                       not started
+                   3  Round trip, first tools           PARTIAL  (browser checks not run)
+ DRIVING A PAGE    4  Debugger, navigate, guard         PARTIAL  (browser checks not run)
+                   5  Screenshots                       not started   <- next
                    6  Mouse and keyboard                not started
-                   7  Reading the page                  not started
+                   7  Reading the page                  PARTIAL  (get_page_text only)
                    8  JS, forms, batch                  not started
  AROUND THE PAGE   9  Files                             not started
                   10  Inspect                           not started
@@ -28,12 +28,14 @@ The agent can open and list tabs in its own tab group. It cannot yet navigate, r
 
 ## Tools
 
-| Tool | Step | Status |
-|---|---|---|
-| `tabs_list` | 1, 3 | Done. Lists the "MCP Browser" group; `createIfEmpty` creates it. |
-| `tab_open` | 3 | Done. Opens a blank tab in the group, creating the group if needed. |
-| `tab_close` | 3 | **Missing.** Not in `relay/tools.ts`, `protocol.ts` or the extension's dispatch table. |
-| `navigate` and later tools | 4+ | Not started. |
+| Tool | What it does |
+|---|---|
+| `tabs_list` | Lists the agent's tabs (the "MCP Browser" group). Can create the group if there is none. |
+| `tab_open` | Opens a new blank tab in the group. |
+| `tab_close` | Closes one of the agent's tabs. Refuses any other tab. |
+| `navigate` | Loads a URL in one of the agent's tabs and waits for it. Blocked sites are refused, and a page that cannot load is reported as an error. |
+| `get_page_text` | Returns the text of the page a tab is on, preferring the main content over menus. Long pages are read 50,000 characters at a time (see Beyond the guide). |
+| Later tools | Not started. See [tool-roadmap.md](tool-roadmap.md) for the build order. |
 
 ## Step by step
 
@@ -41,7 +43,7 @@ The agent can open and list tabs in its own tab group. It cannot yet navigate, r
 
 - `package.json` scripts: `relay`, `build` (`tsc -p extension && node stamp.ts`), `check`, `test`. Node 22.18 or newer.
 - Two `tsconfig.json` files: the root one only type-checks, `extension/tsconfig.json` emits to `extension/dist/`.
-- `extension/manifest.json`: MV3, permissions `storage`, `alarms`, `tabs`, `tabGroups`; module service worker; Chrome 125 or newer.
+- `extension/manifest.json`: MV3, permissions `storage`, `alarms`, `tabs`, `tabGroups`, `debugger` (added in step 4); module service worker; Chrome 125 or newer.
 - `.gitignore`: `node_modules/`, `extension/dist/`, `files/`, `.env`.
 - The placeholder smoke test was replaced by real tests (see Verification).
 
@@ -72,11 +74,35 @@ Done:
 - The extension runs calls one at a time, in arrival order, and always sends exactly one result.
 - `extension/src/tools.ts`: dispatch table (own keys only, so `toString` is refused).
 - `extension/src/tabs.ts`: the "MCP Browser" group (orange). The group id is cached in session storage, with a fallback lookup by title. New tabs open inactive, so they never steal focus.
+- `tab_close`: any id not in the group, including the user's tabs and already-closed tabs, is refused with `NOT_IN_GROUP` (by `checkToolCall`, step 4). It returns `closedTabId` plus the remaining tabs. Closing the last tab removes the group.
 
 Missing:
 
-- **`tab_close`**, including the `NOT_IN_GROUP` error for a tab outside the group.
 - The "runs inside a batch" flag on handlers (3.7). It is only needed from step 8.
+
+### Step 4: Debugger, navigate, guard: PARTIAL
+
+Done:
+
+- `extension/src/cdp/cdp.ts`: the only file that calls `chrome.debugger`. `sendCdpCommand` attaches lazily (one shared attach per tab) and recovers an attachment left over from a worker restart. `detachCdpFromAllTabs` runs on Disconnect.
+- `extension/src/policy/policy.ts`: `checkUrl`. Only http and https (plus about:blank), `file:` behind a setting, cloud metadata hosts always blocked (both lists can be edited in code), then the user's blocked and allowed sites. Hosts are compared after URL parsing. Tested in `test/policy.test.ts`.
+- `checkToolCall` in `extension/src/tools/tools.ts` (the guide's guard): before every tool, refuses tabs outside the group, checks the URL `navigate` loads, and re-checks the current URL of the tab for every other tool except `tab_close`.
+- `navigate`: CDP `Page.navigate`, reporting load errors as `NAVIGATE_FAILED`, with `chrome.tabs.update` as the fallback when CDP cannot attach.
+- Popup: a "Site access" section with blocked and allowed sites (one per line) and an "Allow file:// URLs" checkbox. Lists with a bad entry are not saved.
+
+Missing:
+
+- Back and forward in `navigate`; a "use my other tabs" setting; `RESTRICTED_PAGE` (Chrome's attach error is returned as `CDP_ERROR`); focus emulation and the attach/event hooks (needed from steps 5, 10, 11 and 13).
+
+### Step 7: Reading the page: PARTIAL
+
+Done:
+
+- `get_page_text` (`extension/src/tools/page.ts`): CDP `Runtime.evaluate` returns the text of `<main>`/`<article>`, else `<body>`, 50,000 characters per call; `offset` and `nextOffset` read the rest (see Beyond the guide). `tabId` is required so the guard always checks the page's URL.
+
+Missing:
+
+- `read_page` (the accessibility tree with `ref_N` ids) and `find`.
 
 ### Step 12: Remote access: PARTIAL (built early)
 
@@ -96,6 +122,8 @@ These were added on purpose and are not in the step files:
 
 - **"Open agent tabs in" setting** (`tabWindow`): the main window, a separate window (the default), or an incognito window. It applies when the group is created; an existing group stays where it is. Incognito needs "Allow in Incognito", and the tool returns `INCOGNITO_NOT_ALLOWED` without it.
 - **Changing that setting disconnects.** The popup saves `enabled: false`, so the user must press Connect again. The guide's step 2.6 assumes a settings change reconnects; this one turns the connection off instead.
+- **Site policy is simpler than the guide's.** There is no "use my other tabs" setting, so the agent can only ever use its own group. Site access has its own popup section rather than living inside Advanced.
+- **`get_page_text` reads long pages in parts.** The guide cuts the text at 50,000 characters. Here each call returns up to 50,000 characters plus `nextOffset`, and the model passes it back as `offset` to read on. A first version had no limit: the 131k-character Wikipedia "Nvidia" article was too big for one Claude Code tool result and had to be read from a saved file.
 - **Tool descriptions** for `tabs_list` and `tab_open` say that a closed group is recreated with a new `tabGroupId`, and that ids of closed tabs must not be reused.
 
 ## Verification
@@ -117,13 +145,22 @@ Run on 2026-11-18:
 
 The curl checks ran against a separate relay on port 8799 with auto-launch off.
 
+Run on 2026-11-21, after adding `tab_close`: `npm run check` passes, and `npm test` gives 22 pass, 0 fail. On a relay at port 8799 (curl), `tools/list` lists `tabs_list`, `tab_open` and `tab_close`. `tab_close` with a string `tabId` returns an input validation error, and with no extension connected it returns `NO_EXTENSION`.
+
+Run on 2026-11-22, after steps 4 and 7: `npm run check` and `npm run build` pass, and `npm test` gives 35 pass, 0 fail (`policy` 8 and `siteAccessSummary` 1 added). On a relay at port 8811 (curl), `tools/list` lists all five tools; `get_page_text` without `tabId` returns an input validation error, and with no extension connected `NO_EXTENSION`. The `get_page_text` script was run in Playwright on Wikipedia (picks `<main>`) and example.com (falls back to `<body>`).
+
+Run on 2026-11-22 in Chrome, through the relay: `navigate` loaded the Wikipedia "Nvidia" article, and `get_page_text` read all 130,835 characters in 3 calls (offset 0, 50,000, 100,000), each `nextOffset` following on and the parts joining with nothing lost or repeated.
+
 **NOT RUN** (browser checks from the guide):
 
 - Step 2: relay stop and restart reconnects with no click; a terminated worker restarts within 30 s; a second profile shows "Replaced" and Reconnect takes the relay back; a browser restart reconnects.
-- Step 3: `tabs_list` `{"createIfEmpty": true}` opens a new window; disconnect during a slow call returns "Browser disconnected mid-call"; two calls at once run in order.
+- Step 3: `tab_close` with a group tab's id removes it, and with the id of one of your own tabs returns `NOT_IN_GROUP`; `tabs_list` `{"createIfEmpty": true}` opens a new window; disconnect during a slow call returns "Browser disconnected mid-call"; two calls at once run in order.
 - Popup: changing "Open agent tabs in" disconnects and shows Connect.
+- `navigate`: loads a page and shows the debugging bar; a blocked site returns `BLOCKED`; an unknown domain returns `NAVIGATE_FAILED`; Disconnect removes the bar.
+- `get_page_text`: a tab on a blocked site returns `BLOCKED`.
 
 ## Next
 
-1. Finish step 3: add `tab_close` (relay definition, `protocol.ts` name, extension handler that refuses tabs outside the group with `NOT_IN_GROUP`), then run the step 3 browser checks.
-2. Step 4: the debugger layer, `navigate`, the per-call guard and site policy.
+1. Run the browser checks listed under **NOT RUN** (steps 3, 4 and 7).
+2. Step 5: `computer: screenshot`.
+3. Step 7: `read_page`, which clicks and forms depend on.

@@ -3,8 +3,8 @@
 // Lifecycle of one socket (acceptExtension):
 //   connects → must say hello within HELLO_TIMEOUT_MS, else closed with 4401 (closeForNoHello)
 //   → hello: it becomes connectedExtension and the relay answers ready (onHello)
-//   → then ping/pong and call results; silent for IDLE_TIMEOUT_MS: dropped (resetIdleTimer)
-//   → closes: its pending calls fail at once (onClose → calls.ts failCallsOnSocket)
+//   → then ping/pong and call results; silent for EXTENSION_SILENCE_LIMIT_MS: dropped (resetSilenceTimer)
+//   → closes: its pending calls fail at once (onExtensionSocketClosed → calls.ts failCallsOnSocket)
 // Frames before hello, binary frames and malformed JSON are ignored.
 
 import type { RawData, WebSocket } from "ws";
@@ -20,7 +20,7 @@ import {
   browserWasLaunched,
   launchBrowserAndWait,
   onExtensionConnected,
-} from "./launch.ts";
+} from "../browser/launch.ts";
 import {
   ExtensionError,
   failCallsOnSocket,
@@ -31,7 +31,7 @@ import { log } from "../log.ts";
 
 const HELLO_TIMEOUT_MS = 5_000;
 /** Longer than the extension's 20 s ping interval, so a live extension never hits it. */
-const IDLE_TIMEOUT_MS = 60_000;
+const EXTENSION_SILENCE_LIMIT_MS = 60_000;
 
 /** The extension that said hello and is still connected; null when there is none. */
 let connectedExtension: WebSocket | null = null;
@@ -62,16 +62,17 @@ export async function requireExtension(): Promise<WebSocket> {
 /** Takes over a WebSocket that passed the local-only gate on /ext. */
 export function acceptExtension(webSocket: WebSocket): void {
   let saidHello = false;
-  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  let silenceTimer: ReturnType<typeof setTimeout> | undefined;
   const helloTimer = setTimeout(closeForNoHello, HELLO_TIMEOUT_MS);
 
-  webSocket.on("message", onMessage);
-  webSocket.on("close", onClose);
+  webSocket.on("message", onExtensionMessage);
+  webSocket.on("close", onExtensionSocketClosed);
   webSocket.on("error", (error) =>
     log(`[acceptExtension:] socket error: ${error.message}`),
   );
 
-  function onMessage(data: RawData, isBinary: boolean): void {
+  /** Handles a message from the extension: hello first, then ping and call results. */
+  function onExtensionMessage(data: RawData, isBinary: boolean): void {
     if (isBinary) {
       return;
     }
@@ -88,12 +89,12 @@ export function acceptExtension(webSocket: WebSocket): void {
       saidHello = true;
       clearTimeout(helloTimer);
       onHello(webSocket, message);
-      resetIdleTimer();
+      resetSilenceTimer();
       return;
     }
 
     // Any valid frame after hello proves the socket is alive.
-    resetIdleTimer();
+    resetSilenceTimer();
     if (message.type === "ping") {
       send(webSocket, { type: "pong" });
     } else if (message.type === "result") {
@@ -101,9 +102,10 @@ export function acceptExtension(webSocket: WebSocket): void {
     }
   }
 
-  function onClose(code: number): void {
+  /** Fails this socket's pending calls; clears connectedExtension if it was the connected one. */
+  function onExtensionSocketClosed(code: number): void {
     clearTimeout(helloTimer);
-    clearTimeout(idleTimer);
+    clearTimeout(silenceTimer);
     failCallsOnSocket(webSocket);
     // A replaced or never-greeted socket is not the connected one: nothing more to reset.
     if (connectedExtension !== webSocket) {
@@ -114,7 +116,7 @@ export function acceptExtension(webSocket: WebSocket): void {
     // browser or a dropped connection closes with another code.
     userPressedDisconnect = code === CLOSE_BY_USER;
     log(
-      `[onClose:] extension disconnected (code ${code}${userPressedDisconnect ? ", by the user" : ""})`,
+      `[onExtensionSocketClosed:] extension disconnected (code ${code}${userPressedDisconnect ? ", by the user" : ""})`,
     );
   }
 
@@ -123,12 +125,15 @@ export function acceptExtension(webSocket: WebSocket): void {
     webSocket.close(CLOSE_UNAUTHORIZED, "No hello in time");
   }
 
-  function resetIdleTimer(): void {
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      log(`[resetIdleTimer:] silent for ${IDLE_TIMEOUT_MS}ms; dropping`);
+  /** Restarts the countdown that drops an extension that has gone silent. */
+  function resetSilenceTimer(): void {
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      log(
+        `[resetSilenceTimer:] silent for ${EXTENSION_SILENCE_LIMIT_MS}ms; dropping`,
+      );
       webSocket.terminate();
-    }, IDLE_TIMEOUT_MS);
+    }, EXTENSION_SILENCE_LIMIT_MS);
   }
 }
 

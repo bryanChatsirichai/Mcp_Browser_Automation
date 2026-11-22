@@ -70,7 +70,6 @@ const ToRelaySchema = z.union([
     version: z.string().max(32),
   }),
   z.object({ type: z.literal("ping") }),
-  z.object({ type: z.literal("pong") }),
   z.object({
     type: z.literal("result"),
     id: z.string(),
@@ -87,7 +86,7 @@ const ToRelaySchema = z.union([
 
 /**
  * A message from the extension, or null for anything that is not valid JSON of a known shape.
- * Used by browser/socket.ts on every WebSocket frame; null frames are ignored.
+ * Used by ext/socket.ts on every WebSocket frame; null frames are ignored.
  */
 export function parseToRelay(raw: string): ToRelay | null {
   let value: unknown;
