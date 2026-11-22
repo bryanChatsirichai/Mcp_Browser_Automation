@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Connects this browser to a local Browser Bridge relay.",
   "minimum_chrome_version": "125",
-  "permissions": ["storage", "alarms", "tabs", "tabGroups"],
+  "permissions": ["storage", "alarms", "tabs", "tabGroups", "debugger"],
   "background": { "service_worker": "dist/background.js", "type": "module" },
   "icons": {
     "16": "icons/icon-16.png",

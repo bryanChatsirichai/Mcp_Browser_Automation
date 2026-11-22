@@ -6,8 +6,10 @@
 //
 // Flow: start → load settings, status and relay command → render
 //   button click / tab window change → saveSettings → background.ts reconnects
+//   site list / file:// change → saveSettings (no reconnect; read on every tool call)
 //   storage change (onStorageChanged) → render
 
+import { parseSites } from "../policy/policy.js";
 import {
   DEFAULT_SETTINGS,
   loadSettings,
@@ -37,6 +39,10 @@ const tabWindowInputs = [
 const incognitoWarning =
   document.querySelector<HTMLParagraphElement>("#incognito-warning")!;
 const TAB_WINDOWS: readonly TabWindow[] = ["current", "separate", "incognito"];
+const blockedSitesInput = document.querySelector<HTMLTextAreaElement>("#blocked-sites")!;
+const allowedSitesInput = document.querySelector<HTMLTextAreaElement>("#allowed-sites")!;
+const sitesWarning = document.querySelector<HTMLParagraphElement>("#sites-warning")!;
+const allowFileUrlsInput = document.querySelector<HTMLInputElement>("#allow-file-urls")!;
 
 /** The settings as last saved; the URL field may hold an unsaved draft. */
 let savedSettings: Settings;
@@ -51,6 +57,13 @@ for (const input of tabWindowInputs) {
 for (const button of copyButtons) {
   button.addEventListener("click", () => void onCopyClick(button));
 }
+for (const input of [blockedSitesInput, allowedSitesInput]) {
+  input.addEventListener("change", () => void onSitesChange());
+}
+// Site policy changes never disconnect: checkToolCall reads them on every tool call.
+allowFileUrlsInput.addEventListener("change", () =>
+  void saveSettings({ ...savedSettings, allowFileUrls: allowFileUrlsInput.checked }),
+);
 connectButton.addEventListener("click", () => void onConnectClick());
 urlInput.addEventListener("input", render);
 chrome.storage.onChanged.addListener(onStorageChanged);
@@ -65,6 +78,9 @@ async function start(): Promise<void> {
     relayCommand(),
   ]);
   urlInput.value = savedSettings.url;
+  // Filled once, not in render(), so a status change never overwrites what the user is typing.
+  blockedSitesInput.value = savedSettings.blockedSites.join("\n");
+  allowedSitesInput.value = savedSettings.allowedSites.join("\n");
   commandText.textContent = command;
   document.querySelector("#version")!.textContent =
     `v${chrome.runtime.getManifest().version}`;
@@ -103,6 +119,7 @@ function render(): void {
   for (const input of tabWindowInputs) {
     input.checked = input.value === savedSettings.tabWindow;
   }
+  allowFileUrlsInput.checked = savedSettings.allowFileUrls;
   // Re-checked on every render: the user may enable incognito access while the popup is open.
   void chrome.extension.isAllowedIncognitoAccess().then((allowed) => {
     incognitoWarning.hidden =
@@ -134,6 +151,29 @@ function onTabWindowChange(input: HTMLInputElement): void {
   if (input.checked && tabWindow) {
     void saveSettings({ ...savedSettings, tabWindow, enabled: false });
   }
+}
+
+/**
+ * Saves both site lists, or neither while any entry is not a site. Dropping a bad entry instead
+ * could leave the allowed list empty, and an empty list allows every site.
+ */
+async function onSitesChange(): Promise<void> {
+  const blocked = parseSites(blockedSitesInput.value);
+  const allowed = parseSites(allowedSitesInput.value);
+  const bad = [...blocked.bad, ...allowed.bad];
+  sitesWarning.hidden = bad.length === 0;
+  sitesWarning.textContent = `Not saved. Not a site: ${bad.join(", ")}`;
+  if (bad.length > 0) {
+    return;
+  }
+  await saveSettings({
+    ...savedSettings,
+    blockedSites: blocked.sites,
+    allowedSites: allowed.sites,
+  });
+  // Show what was saved: host names only, e.g. "https://www.example.com/a" → "www.example.com".
+  blockedSitesInput.value = blocked.sites.join("\n");
+  allowedSitesInput.value = allowed.sites.join("\n");
 }
 
 /** Copies the text of the <code> named by the button's data-copy attribute. */

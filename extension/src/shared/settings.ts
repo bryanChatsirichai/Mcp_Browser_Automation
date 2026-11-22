@@ -13,6 +13,11 @@ export interface Settings {
   connectNonce: number;
   /** Where a new "MCP Browser" tab group is created. An existing group stays where it is. */
   tabWindow: TabWindow;
+  /** Site policy (policy/policy.ts). Host names; each also covers its subdomains. */
+  blockedSites: string[];
+  /** When not empty, the agent may only use these sites. */
+  allowedSites: string[];
+  allowFileUrls: boolean;
 }
 
 /**
@@ -52,6 +57,9 @@ export const DEFAULT_SETTINGS: Settings = {
   enabled: false,
   connectNonce: 0,
   tabWindow: "separate",
+  blockedSites: [],
+  allowedSites: [],
+  allowFileUrls: false,
 };
 
 /** Stored values merged over the defaults, so a setting added later has a value for existing users. */

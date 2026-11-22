@@ -33,7 +33,7 @@ The agent can open and list tabs in its own tab group. It cannot yet navigate, r
 | `tabs_list` | 1, 3 | Done. Lists the "MCP Browser" group; `createIfEmpty` creates it. |
 | `tab_open` | 3 | Done. Opens a blank tab in the group, creating the group if needed. |
 | `tab_close` | 3 | Built 2026-11-21. Closes a tab in the group; any other id returns `NOT_IN_GROUP`. Browser check **NOT RUN**. |
-| `navigate` | 4 | Built 2026-11-22, minimal: `chrome.tabs.update`, no CDP or site policy yet. Group tabs only (`NOT_IN_GROUP`); http, https and about:blank only (`BLOCKED`); waits up to 30 s for the load. No back/forward. Browser check **NOT RUN**. |
+| `navigate` | 4 | Built 2026-11-22. CDP `Page.navigate` (load errors → `NAVIGATE_FAILED`), falling back to `chrome.tabs.update`. Guarded by `checkToolCall` and the site policy (`extension/src/policy/policy.ts`). No back/forward. Browser check **NOT RUN**. |
 | Later tools | 4+ | Not started. See [tool-roadmap.md](tool-roadmap.md) for difficulty, usefulness and build order. |
 
 ## Step by step

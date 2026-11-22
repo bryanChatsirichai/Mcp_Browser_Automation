@@ -50,10 +50,11 @@ export const TOOLS: ToolDefinition[] = [
     name: "navigate",
     description:
       'Load a URL in a tab of the "MCP Browser" tab group and wait up to 30 seconds for it to finish loading. ' +
-      "A URL without a scheme gets https:// (http:// for localhost). Only http and https URLs are allowed; " +
-      "any other fails with BLOCKED. Without tabId, the group's first tab is used, creating the group if there is none. " +
+      "A URL without a scheme gets https:// (http:// for localhost). " +
+      "Without tabId, the group's first tab is used, creating the group if there is none. " +
       "Returns { tabId, url, stillLoading, availableTabs, tabGroupId }, where url is the final URL after redirects. " +
-      "Fails with NOT_IN_GROUP for any tab outside the group.",
+      "Fails with BLOCKED when the user's site policy refuses the URL (report it; do not work around it), " +
+      "NAVIGATE_FAILED when the page cannot load, and NOT_IN_GROUP for any tab outside the group.",
     inputSchema: z.object({
       url: z.string().min(1).describe("The URL to load, such as https://example.com or example.com."),
       tabId: z

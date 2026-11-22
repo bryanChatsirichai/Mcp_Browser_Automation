@@ -2,14 +2,16 @@
 // the group is created follows the tabWindow setting; new windows are never focused.
 //
 // Used by tools.ts:
-//   groupTabs   the group's tabs (never creates the group)
-//   ensureGroup the group's tabs, creating the group when there is none
-//   openTab     a new tab in the group, creating the group when there is none
-//   closeTab    closes a tab in the group; refuses any other tab with NOT_IN_GROUP
-//   navigateTab loads a URL in a group tab and waits for the load; refuses other tabs like closeTab
-//   tabContext  the tab list returned to the model
+//   groupTabs     the group's tabs (never creates the group)
+//   ensureGroup   the group's tabs, creating the group when there is none
+//   openTab       a new tab in the group, creating the group when there is none
+//   checkInGroup  refuses any tab outside the group with NOT_IN_GROUP (used by checkToolCall)
+//   closeTab      closes a tab
+//   navigateTab   loads a URL through CDP and waits for the load
+//   tabContext    the tab list returned to the model
 // Creating a group: createGroup → createFirstGroupTab (where, per tabWindow) → group and title it
 
+import { sendCdpCommand } from "../cdp/cdp.js";
 import { ToolError } from "../shared/errors.js";
 import { loadSettings } from "../shared/settings.js";
 import type { TabWindow } from "../shared/settings.js";
@@ -149,71 +151,33 @@ export async function openTab(): Promise<chrome.tabs.Tab> {
   return tab;
 }
 
-/** Throws NOT_IN_GROUP for any tab outside the group, including closed ones. */
-async function checkInGroup(tabId: number, action: string): Promise<void> {
-  const tabs = await groupTabs();
-  if (!tabs.some((tab) => tab.id === tabId)) {
+/** Returns the tab if it is in the group; throws NOT_IN_GROUP for any other, including closed ones. */
+export async function checkInGroup(tabId: number): Promise<chrome.tabs.Tab> {
+  const tab = (await groupTabs()).find((groupTab) => groupTab.id === tabId);
+  if (!tab) {
     throw new ToolError(
       "NOT_IN_GROUP",
-      `Tab ${tabId} is not in the "${GROUP_TITLE}" tab group, so it cannot be ${action}. ` +
+      `Tab ${tabId} is not in the "${GROUP_TITLE}" tab group, so it cannot be used. ` +
         "Call tabs_list for the current tab ids.",
     );
   }
+  return tab;
 }
 
-/** Closes a tab in the group. Any other tab, including one that no longer exists, is refused. */
+/** Closes a tab. checkToolCall has already refused tabs outside the group. */
 export async function closeTab(tabId: number): Promise<void> {
-  await checkInGroup(tabId, "closed");
   await chrome.tabs.remove(tabId);
 }
 
-/** Adds `https://` to a URL without a scheme (`http://` for local hosts): `example.com` works. */
-function addScheme(url: string): string {
-  const text = url.trim();
-  if (text.includes("://") || text === "about:blank") {
-    return text;
-  }
-  // localhost, 127.x.x.x or [::1], alone or before a port or path: "localhost:3000/x".
-  const local = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\])($|[:/?#])/i.test(text);
-  return (local ? "http://" : "https://") + text;
-}
-
 /**
- * Security check: returns the parsed URL, or throws BLOCKED unless it is http, https or
- * about:blank. Other schemes reach past web pages: `javascript:` runs script in the open page,
- * `data:` loads agent-written content, `file:` reads local files, `chrome:` opens settings.
- */
-function checkUrl(url: string): string {
-  let parsed: URL | undefined;
-  try {
-    parsed = new URL(url);
-  } catch {
-    // Not a URL. `javascript:alert(1)` lands here: addScheme made it `https://javascript:alert(1)`.
-  }
-  const allowed =
-    parsed?.href === "about:blank" ||
-    parsed?.protocol === "http:" ||
-    parsed?.protocol === "https:";
-  if (!parsed || !allowed) {
-    throw new ToolError(
-      "BLOCKED",
-      `Cannot navigate to "${url}": only http and https URLs are allowed.`,
-    );
-  }
-  return parsed.href;
-}
-
-/**
- * Loads a URL in a group tab and waits up to LOAD_TIMEOUT_MS. A same-document navigation never
- * reports `loading`, so none after SAME_DOCUMENT_MS counts as done. Returns the tab and stillLoading.
+ * Loads a URL (scheme already added and policy-checked by checkToolCall) and waits up to
+ * LOAD_TIMEOUT_MS. A same-document navigation never reports `loading`, so none after
+ * SAME_DOCUMENT_MS counts as done. Returns the tab and stillLoading.
  */
 export async function navigateTab(
   tabId: number,
-  url: string,
+  target: string,
 ): Promise<{ tab: chrome.tabs.Tab; stillLoading: boolean }> {
-  await checkInGroup(tabId, "navigated");
-  const target = checkUrl(addScheme(url));
-
   // Listen before navigating, or a fast load can finish unseen.
   let started = false;
   let finish: (complete: boolean) => void = () => {};
@@ -233,13 +197,31 @@ export async function navigateTab(
   const timeout = setTimeout(() => finish(false), LOAD_TIMEOUT_MS);
 
   try {
-    await chrome.tabs.update(tabId, { url: target });
+    await startNavigation(tabId, target);
     const complete = await finished;
     return { tab: await chrome.tabs.get(tabId), stillLoading: !complete };
   } finally {
     chrome.tabs.onUpdated.removeListener(onUpdated);
     clearTimeout(sameDocument);
     clearTimeout(timeout);
+  }
+}
+
+/**
+ * Starts loading through CDP, which reports load errors such as an unknown domain. Falls back to
+ * chrome.tabs.update when CDP cannot attach (chrome:// pages, or another debugger on the tab).
+ */
+async function startNavigation(tabId: number, url: string): Promise<void> {
+  let errorText: string | undefined;
+  try {
+    ({ errorText } = await sendCdpCommand(tabId, "Page.navigate", { url }));
+  } catch {
+    await chrome.tabs.update(tabId, { url });
+    return;
+  }
+  // net::ERR_ABORTED comes from downloads and same-page jumps, which are not failures.
+  if (errorText && errorText !== "net::ERR_ABORTED") {
+    throw new ToolError("NAVIGATE_FAILED", `Could not load ${url}: ${errorText}.`);
   }
 }
 
