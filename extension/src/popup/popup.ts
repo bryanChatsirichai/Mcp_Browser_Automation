@@ -23,8 +23,7 @@ const statusTitle = document.querySelector<HTMLParagraphElement>("#status-title"
 const statusDetail =
   document.querySelector<HTMLParagraphElement>("#status-detail")!;
 const relayHost = document.querySelector<HTMLSpanElement>("#relay-host")!;
-const startBox = document.querySelector<HTMLElement>("#start")!;
-const clientBox = document.querySelector<HTMLElement>("#client")!;
+const startup = document.querySelector<HTMLDetailsElement>("#startup")!;
 const commandText = document.querySelector<HTMLElement>("#command")!;
 const clientCommandText =
   document.querySelector<HTMLElement>("#client-command")!;
@@ -69,6 +68,8 @@ async function start(): Promise<void> {
   commandText.textContent = command;
   document.querySelector("#version")!.textContent =
     `v${chrome.runtime.getManifest().version}`;
+  // Set once per open, not in render(), so a status change never folds it under the user.
+  startup.open = workerStatus.state !== "connected";
   render();
 }
 
@@ -82,7 +83,6 @@ function render(): void {
   connectButton.disabled =
     (action === "Connect" || action === "Reconnect") && !urlOk;
 
-  const connected = workerStatus.state === "connected";
   const copy = STATUS_COPY[workerStatus.state];
   const urlInvalid = !urlOk && draftUrl !== "";
 
@@ -99,12 +99,6 @@ function render(): void {
     advanced.open = true;
   }
   relayHost.textContent = hostOf(savedSettings.url);
-  // A refused or replaced browser reached a running relay, so starting one is no help there.
-  startBox.hidden =
-    connected ||
-    workerStatus.state === "unauthorized" ||
-    workerStatus.state === "replaced";
-  clientBox.hidden = !connected;
   clientCommandText.textContent = claudeCodeCommand(savedSettings.url);
   for (const input of tabWindowInputs) {
     input.checked = input.value === savedSettings.tabWindow;

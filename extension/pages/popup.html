@@ -219,7 +219,7 @@
     /* ── Status ───────────────────────────────────────────────────────── */
 
     #status {
-      margin: 16px 0 0;
+      margin: 16px 0 4px;
     }
 
     #status-title {
@@ -255,7 +255,7 @@
     /* ── Copy snippets ────────────────────────────────────────────────── */
 
     .snippet {
-      margin-top: 18px;
+      margin-top: 14px;
     }
 
     .snippet h2 {
@@ -333,7 +333,7 @@
     /* ── Advanced ─────────────────────────────────────────────────────── */
 
     details {
-      margin-top: 16px;
+      margin-top: 12px;
       border-top: 1px solid var(--border);
       padding-top: 10px;
     }
@@ -505,7 +505,15 @@
     <p id="status-detail"></p>
   </div>
 
-  <section id="start" class="snippet" hidden>
+  <details id="startup">
+    <summary>
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+        stroke-linejoin="round">
+        <path d="M4.5 2.5L8 6l-3.5 3.5" />
+      </svg>
+      Start-up
+    </summary>
+  <section class="snippet">
     <h2>Start the relay</h2>
     <div class="command">
       <code id="command"></code>
@@ -523,7 +531,7 @@
     <p class="hint">Run in any terminal.</p>
   </section>
 
-  <section id="client" class="snippet" hidden>
+  <section class="snippet">
     <h2>Add it to Claude Code</h2>
     <div class="command">
       <code id="client-command"></code>
@@ -540,6 +548,7 @@
     </div>
     <p class="hint">User scope: available in every project. Run in any terminal.</p>
   </section>
+  </details>
 
   <details id="advanced">
     <summary>
