@@ -37,7 +37,7 @@ Step by step, with the code:
 4. **Pre-flight on the relay.** `logCall` writes an audit line including the model's `action_summary`. `checkUploads` validates `file_upload` paths, because only the relay can see the file system (`relay.ts:446-449`).
 5. **Correlation.** `callExtension` creates a UUID, stores `{resolve, reject, timer}` under it in `pending`, and starts a 90s timer (`relay.ts:177-187`).
 6. **Over the socket.** `{type: "call", id, tool, args}` goes to the extension.
-7. **Queue.** `onMessage` chains the call onto a promise queue so calls run one at a time (`background.ts:107-112`).
+7. **Queue.** `onRelayMessage` chains the call onto a promise queue so calls run one at a time (`background.ts:107-112`).
 8. **Guard.** `guard()` checks that tab 12 is in the MCP group and that its current URL is allowed (`tools.ts:172-194`).
 9. **Overlay.** `activate(tabId)` turns on the glow border (`tools.ts:207`).
 10. **Coordinates.** `locate()` converts the model's `[400, 300]` from the screenshot frame to CSS pixels (`computer.ts:42-67`).
@@ -59,7 +59,8 @@ JSON text frames over one WebSocket. Six message types:
 | relay -> ext | `{type:"ready"}` | Hello accepted. |
 | relay -> ext | `{type:"call", id, tool, args}` | Run a tool. |
 | ext -> relay | `{type:"result", id, ok:true, data}` or `{..., ok:false, error:{code, message}}` | Answer to a call. |
-| both | `{type:"ping"}`, `{type:"pong"}` | Liveness. The extension pings; the relay pongs. |
+| ext -> relay | `{type:"ping"}` | Liveness check, every 20s. Only the extension pings. |
+| relay -> ext | `{type:"pong"}` | Answer to a ping. |
 
 Custom close codes: `4401` (unauthorized) and `4409` (replaced by another browser) (`protocol.ts:61-62`). The extension treats these two as "do not retry"; any other close triggers a reconnect.
 
@@ -164,11 +165,11 @@ State machine of the extension side, as stored in `chrome.storage.session` under
         |                                                            |  start helloTimer (5s)
         |---- {hello, token, browser, version} --------------------->|  wrong token -> close 4401
         |                                                            |  older socket, if any -> close 4409
-        |<--- {ready} -----------------------------------------------|  start idle timer (60s)
+        |<--- {ready} -----------------------------------------------|  start silence timer (60s)
         |  status = connected, backoff reset to 1s,                  |
         |  download watermark set                                    |
         |                                                            |
-        |---- {ping} ------------- every 20s ----------------------->|  idle timer reset
+        |---- {ping} ------------- every 20s ----------------------->|  silence timer reset
         |<--- {pong} ------------------------------------------------|
         |  heardAt updated                                           |
         |                                                            |
@@ -181,7 +182,7 @@ State machine of the extension side, as stored in `chrome.storage.session` under
 2. The first valid message must be `hello` with the right token, else close `4401`.
 3. If another extension socket exists, it is closed with `4409`. **One browser per relay, last one wins.**
 4. `ready` is sent, and anything waiting in `onConnected` (see `BROWSER_LAUNCH`) is notified.
-5. Every later message resets a 60s idle timer; when it fires the socket is terminated.
+5. Every later message resets a 60s silence timer (`resetSilenceTimer`); when it fires the socket is terminated.
 
 ### Keeping it alive (extension side)
 

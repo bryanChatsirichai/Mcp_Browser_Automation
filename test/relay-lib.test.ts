@@ -76,7 +76,7 @@ test("isLocal refuses a web Origin", () => {
   );
 });
 
-test("parseToRelay accepts the three extension messages", () => {
+test("parseToRelay accepts hello and ping", () => {
   assert.deepEqual(
     parseToRelay(
       '{"type":"hello","token":"","browser":"Chrome","version":"0.1.0"}',
@@ -89,7 +89,10 @@ test("parseToRelay accepts the three extension messages", () => {
     },
   );
   assert.deepEqual(parseToRelay('{"type":"ping"}'), { type: "ping" });
-  assert.deepEqual(parseToRelay('{"type":"pong"}'), { type: "pong" });
+});
+
+test("parseToRelay drops pong: only the extension pings", () => {
+  assert.equal(parseToRelay('{"type":"pong"}'), null);
 });
 
 test("parseToRelay drops invalid JSON, unknown types and malformed hellos", () => {

@@ -70,7 +70,6 @@ const ToRelaySchema = z.union([
     version: z.string().max(32),
   }),
   z.object({ type: z.literal("ping") }),
-  z.object({ type: z.literal("pong") }),
   z.object({
     type: z.literal("result"),
     id: z.string(),

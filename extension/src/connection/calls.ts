@@ -1,6 +1,6 @@
 // Runs the calls the relay sends, one at a time, and sends back exactly one result for each.
 //
-// Flow: connection.ts onMessage → enqueueCall → waits its turn → runCall
+// Flow: connection.ts onRelayMessage → enqueueCall → waits its turn → runCall
 //         → resultOf → runTool (tools.ts) → result sent on the socket the call came from
 
 import { ToolError, toErrorBody } from "../shared/errors.js";
