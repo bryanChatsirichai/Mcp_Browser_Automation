@@ -122,24 +122,10 @@
       transition: background-color .3s;
     }
 
-    .packet,
     .break {
       position: absolute;
       top: 50%;
       display: none;
-    }
-
-    .packet {
-      left: 0;
-      width: 8px;
-      height: 8px;
-      margin-top: -4px;
-      border-radius: 50%;
-      background: var(--ok);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent);
-    }
-
-    .break {
       left: 50%;
       transform: translate(-50%, -50%);
       color: var(--bad);
@@ -181,14 +167,11 @@
       --dash: var(--warn);
     }
 
+    /* The gradient starts and ends on the same colour and is twice the line's width, so shifting
+       it by -200% (one full image width) loops without a seam. */
     [data-state="connected"] .wire::before {
-      background: linear-gradient(90deg, var(--accent), var(--ok));
-    }
-
-    [data-state="connected"] .packet {
-      display: block;
-      /* Back and forth: one request out, one reply back. */
-      animation: ping 1.8s ease-in-out infinite alternate;
+      background: linear-gradient(90deg, var(--accent), var(--ok), var(--accent)) 0 0 / 200% 100%;
+      animation: flow 4s linear infinite;
     }
 
     [data-state="connected"] #relay-node {
@@ -221,24 +204,15 @@
       }
     }
 
-    @keyframes ping {
-      from {
-        left: 0;
-      }
-
+    @keyframes flow {
       to {
-        left: calc(100% - 8px);
+        background-position-x: -200%;
       }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .wire::before,
-      .packet {
+      .wire::before {
         animation: none !important;
-      }
-
-      [data-state="connected"] .packet {
-        left: calc(50% - 4px);
       }
     }
 
@@ -512,7 +486,7 @@
         <path d="M1.5 6h13M4 4.25h.01M6 4.25h.01" />
       </svg>
     </span>
-    <span class="wire"><span class="packet"></span><span class="break">✕</span></span>
+    <span class="wire"><span class="break">✕</span></span>
     <span class="node" id="relay-node">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
         <rect x="2" y="2.5" width="12" height="4.5" rx="1.2" />
