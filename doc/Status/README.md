@@ -149,13 +149,15 @@ Run on 2026-11-21, after adding `tab_close`: `npm run check` passes, and `npm te
 
 Run on 2026-11-22, after steps 4 and 7: `npm run check` and `npm run build` pass, and `npm test` gives 35 pass, 0 fail (`policy` 8 and `siteAccessSummary` 1 added). On a relay at port 8811 (curl), `tools/list` lists all five tools; `get_page_text` without `tabId` returns an input validation error, and with no extension connected `NO_EXTENSION`. The `get_page_text` script was run in Playwright on Wikipedia (picks `<main>`) and example.com (falls back to `<body>`).
 
+Run on 2026-11-22 in Chrome, through the relay: `navigate` loaded the Wikipedia "Nvidia" article, and `get_page_text` read all 130,835 characters in 3 calls (offset 0, 50,000, 100,000), each `nextOffset` following on and the parts joining with nothing lost or repeated.
+
 **NOT RUN** (browser checks from the guide):
 
 - Step 2: relay stop and restart reconnects with no click; a terminated worker restarts within 30 s; a second profile shows "Replaced" and Reconnect takes the relay back; a browser restart reconnects.
 - Step 3: `tab_close` with a group tab's id removes it, and with the id of one of your own tabs returns `NOT_IN_GROUP`; `tabs_list` `{"createIfEmpty": true}` opens a new window; disconnect during a slow call returns "Browser disconnected mid-call"; two calls at once run in order.
 - Popup: changing "Open agent tabs in" disconnects and shows Connect.
 - `navigate`: loads a page and shows the debugging bar; a blocked site returns `BLOCKED`; an unknown domain returns `NAVIGATE_FAILED`; Disconnect removes the bar.
-- `get_page_text`: returns a page's text through the extension (the script itself was checked in Playwright); a tab on a blocked site returns `BLOCKED`.
+- `get_page_text`: a tab on a blocked site returns `BLOCKED`.
 
 ## Next
 
