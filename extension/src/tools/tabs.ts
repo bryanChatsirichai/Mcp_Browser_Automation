@@ -6,6 +6,7 @@
 //   ensureGroup the group's tabs, creating the group when there is none
 //   openTab     a new tab in the group, creating the group when there is none
 //   closeTab    closes a tab in the group; refuses any other tab with NOT_IN_GROUP
+//   navigateTab loads a URL in a group tab and waits for the load; refuses other tabs like closeTab
 //   tabContext  the tab list returned to the model
 // Creating a group: createGroup → createFirstGroupTab (where, per tabWindow) → group and title it
 
@@ -17,6 +18,8 @@ const GROUP_TITLE = "MCP Browser";
 const GROUP_COLOR = "orange";
 const MAX_TITLE = 100;
 const MAX_URL = 200;
+const LOAD_TIMEOUT_MS = 30_000;
+const SAME_DOCUMENT_MS = 1_500;
 
 export interface TabContext {
   availableTabs: Array<{ tabId: number; title: string; url: string }>;
@@ -146,17 +149,98 @@ export async function openTab(): Promise<chrome.tabs.Tab> {
   return tab;
 }
 
-/** Closes a tab in the group. Any other tab, including one that no longer exists, is refused. */
-export async function closeTab(tabId: number): Promise<void> {
+/** Throws NOT_IN_GROUP for any tab outside the group, including closed ones. */
+async function checkInGroup(tabId: number, action: string): Promise<void> {
   const tabs = await groupTabs();
   if (!tabs.some((tab) => tab.id === tabId)) {
     throw new ToolError(
       "NOT_IN_GROUP",
-      `Tab ${tabId} is not in the "${GROUP_TITLE}" tab group, so it cannot be closed. ` +
+      `Tab ${tabId} is not in the "${GROUP_TITLE}" tab group, so it cannot be ${action}. ` +
         "Call tabs_list for the current tab ids.",
     );
   }
+}
+
+/** Closes a tab in the group. Any other tab, including one that no longer exists, is refused. */
+export async function closeTab(tabId: number): Promise<void> {
+  await checkInGroup(tabId, "closed");
   await chrome.tabs.remove(tabId);
+}
+
+/** Adds `https://` to a URL without a scheme (`http://` for local hosts): `example.com` works. */
+function addScheme(url: string): string {
+  const text = url.trim();
+  if (text.includes("://") || text === "about:blank") {
+    return text;
+  }
+  // localhost, 127.x.x.x or [::1], alone or before a port or path: "localhost:3000/x".
+  const local = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\])($|[:/?#])/i.test(text);
+  return (local ? "http://" : "https://") + text;
+}
+
+/**
+ * Security check: returns the parsed URL, or throws BLOCKED unless it is http, https or
+ * about:blank. Other schemes reach past web pages: `javascript:` runs script in the open page,
+ * `data:` loads agent-written content, `file:` reads local files, `chrome:` opens settings.
+ */
+function checkUrl(url: string): string {
+  let parsed: URL | undefined;
+  try {
+    parsed = new URL(url);
+  } catch {
+    // Not a URL. `javascript:alert(1)` lands here: addScheme made it `https://javascript:alert(1)`.
+  }
+  const allowed =
+    parsed?.href === "about:blank" ||
+    parsed?.protocol === "http:" ||
+    parsed?.protocol === "https:";
+  if (!parsed || !allowed) {
+    throw new ToolError(
+      "BLOCKED",
+      `Cannot navigate to "${url}": only http and https URLs are allowed.`,
+    );
+  }
+  return parsed.href;
+}
+
+/**
+ * Loads a URL in a group tab and waits up to LOAD_TIMEOUT_MS. A same-document navigation never
+ * reports `loading`, so none after SAME_DOCUMENT_MS counts as done. Returns the tab and stillLoading.
+ */
+export async function navigateTab(
+  tabId: number,
+  url: string,
+): Promise<{ tab: chrome.tabs.Tab; stillLoading: boolean }> {
+  await checkInGroup(tabId, "navigated");
+  const target = checkUrl(addScheme(url));
+
+  // Listen before navigating, or a fast load can finish unseen.
+  let started = false;
+  let finish: (complete: boolean) => void = () => {};
+  const finished = new Promise<boolean>((resolve) => (finish = resolve));
+  const onUpdated = (id: number, change: { status?: string }) => {
+    if (id !== tabId) {
+      return;
+    }
+    if (change.status === "loading") {
+      started = true;
+    } else if (change.status === "complete" && started) {
+      finish(true);
+    }
+  };
+  chrome.tabs.onUpdated.addListener(onUpdated);
+  const sameDocument = setTimeout(() => started || finish(true), SAME_DOCUMENT_MS);
+  const timeout = setTimeout(() => finish(false), LOAD_TIMEOUT_MS);
+
+  try {
+    await chrome.tabs.update(tabId, { url: target });
+    const complete = await finished;
+    return { tab: await chrome.tabs.get(tabId), stillLoading: !complete };
+  } finally {
+    chrome.tabs.onUpdated.removeListener(onUpdated);
+    clearTimeout(sameDocument);
+    clearTimeout(timeout);
+  }
 }
 
 /** The group's tabs, creating the group with one blank tab when it has none. */

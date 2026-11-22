@@ -3,8 +3,8 @@
 
 import { ToolError } from "../shared/errors.js";
 import { log } from "../shared/log.js";
-import type { TabCloseArgs, TabsListArgs, ToolName } from "../shared/protocol.js";
-import { closeTab, ensureGroup, groupTabs, openTab, tabContext } from "./tabs.js";
+import type { NavigateArgs, TabCloseArgs, TabsListArgs, ToolName } from "../shared/protocol.js";
+import { closeTab, ensureGroup, groupTabs, navigateTab, openTab, tabContext } from "./tabs.js";
 
 /** Returns plain data; the relay turns it into JSON text for the model. */
 type Handler = (args: Record<string, unknown>) => Promise<object>;
@@ -24,6 +24,19 @@ const handlers: Record<ToolName, Handler> = {
     const { tabId } = args as unknown as TabCloseArgs;
     await closeTab(tabId);
     return { closedTabId: tabId, ...(await tabContext(await groupTabs())) };
+  },
+
+  async navigate(args) {
+    const { url, tabId } = args as unknown as NavigateArgs;
+    // Defaults to the group's first tab; the returned tabId tells the model which one.
+    const id = tabId ?? (await ensureGroup())[0].id!;
+    const { tab, stillLoading } = await navigateTab(id, url);
+    return {
+      tabId: id,
+      url: tab.url ?? tab.pendingUrl ?? "",
+      stillLoading,
+      ...(await tabContext(await groupTabs())),
+    };
   },
 };
 

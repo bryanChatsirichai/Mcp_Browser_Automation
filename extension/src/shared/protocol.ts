@@ -10,7 +10,7 @@
 //   relay     → call {id,tool}   extension → result {id, ok, data | error}   (one result per call id)
 
 /** Every tool the extension implements. Adding a name here without a handler is a compile error. */
-export type ToolName = "tabs_list" | "tab_open" | "tab_close";
+export type ToolName = "tabs_list" | "tab_open" | "tab_close" | "navigate";
 
 export interface Hello {
   type: "hello";
@@ -63,4 +63,9 @@ export interface TabsListArgs {
 
 export interface TabCloseArgs {
   tabId: number;
+}
+
+export interface NavigateArgs {
+  url: string;
+  tabId?: number;
 }
