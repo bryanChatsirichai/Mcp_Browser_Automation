@@ -2,8 +2,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   claudeCodeCommand,
+  siteAccessSummary,
   STATUS_COPY,
 } from "../extension/dist/popup/view.js";
+
+test("siteAccessSummary: describes the defaults and an active policy", () => {
+  assert.equal(
+    siteAccessSummary({ blockedSites: [], allowedSites: [], allowFileUrls: false }),
+    "none blocked · all sites",
+  );
+  assert.equal(
+    siteAccessSummary({ blockedSites: ["a.com", "b.com"], allowedSites: ["c.com"], allowFileUrls: true }),
+    "2 blocked · only 1 allowed · file:// on",
+  );
+});
 
 const EXPECTED =
   "claude mcp add --scope user --transport http browser http://127.0.0.1:8787/mcp";

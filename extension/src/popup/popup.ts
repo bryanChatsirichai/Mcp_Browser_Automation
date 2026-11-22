@@ -17,7 +17,7 @@ import {
   saveSettings,
 } from "../shared/settings.js";
 import type { Settings, Status, TabWindow } from "../shared/settings.js";
-import { claudeCodeCommand, STATUS_COPY } from "./view.js";
+import { claudeCodeCommand, siteAccessSummary, STATUS_COPY } from "./view.js";
 
 const urlInput = document.querySelector<HTMLInputElement>("#url")!;
 const connectButton = document.querySelector<HTMLButtonElement>("#connect")!;
@@ -43,6 +43,7 @@ const blockedSitesInput = document.querySelector<HTMLTextAreaElement>("#blocked-
 const allowedSitesInput = document.querySelector<HTMLTextAreaElement>("#allowed-sites")!;
 const sitesWarning = document.querySelector<HTMLParagraphElement>("#sites-warning")!;
 const allowFileUrlsInput = document.querySelector<HTMLInputElement>("#allow-file-urls")!;
+const siteSummary = document.querySelector<HTMLSpanElement>("#site-summary")!;
 
 /** The settings as last saved; the URL field may hold an unsaved draft. */
 let savedSettings: Settings;
@@ -120,6 +121,7 @@ function render(): void {
     input.checked = input.value === savedSettings.tabWindow;
   }
   allowFileUrlsInput.checked = savedSettings.allowFileUrls;
+  siteSummary.textContent = siteAccessSummary(savedSettings);
   // Re-checked on every render: the user may enable incognito access while the popup is open.
   void chrome.extension.isAllowedIncognitoAccess().then((allowed) => {
     incognitoWarning.hidden =

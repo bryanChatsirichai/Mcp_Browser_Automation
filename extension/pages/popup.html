@@ -393,8 +393,14 @@
       resize: vertical;
     }
 
-    #site-access .hint {
-      margin: 4px 0 10px;
+    #site-access textarea {
+      margin-bottom: 8px;
+    }
+
+    /* State shown on the collapsed row, so a closed section still says what is active. */
+    .summary-note {
+      font-size: 12px;
+      opacity: .75;
     }
 
     #sites-warning {
@@ -564,6 +570,29 @@
   </section>
   </details>
 
+  <details id="site-access">
+    <summary>
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+        stroke-linejoin="round">
+        <path d="M4.5 2.5L8 6l-3.5 3.5" />
+      </svg>
+      Site access
+      <span id="site-summary" class="summary-note"></span>
+    </summary>
+    <div class="advanced-body">
+      <label for="blocked-sites">Blocked sites</label>
+      <textarea id="blocked-sites" rows="2" spellcheck="false" placeholder="mybank.com"></textarea>
+      <label for="allowed-sites">Allowed sites (empty = every site)</label>
+      <textarea id="allowed-sites" rows="2" spellcheck="false" placeholder="example.com"></textarea>
+      <p id="sites-warning" class="warning" hidden></p>
+      <label class="choice">
+        <input id="allow-file-urls" type="checkbox">
+        <span>Allow file:// URLs</span>
+      </label>
+      <p class="hint">One site per line, subdomains included. Saved when you leave a field.</p>
+    </div>
+  </details>
+
   <details id="advanced">
     <summary>
       <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
@@ -592,23 +621,8 @@
         <p id="incognito-warning" class="warning" hidden>
           Needs "Allow in Incognito": chrome://extensions › this extension › Details.
         </p>
-        <p class="hint">Changing this disconnects; press Connect again. Applies when the "MCP Browser" group is
-          created. Close the group to move it.</p>
-      </fieldset>
-      <fieldset id="site-access">
-        <legend>Site access</legend>
-        <label for="blocked-sites">Blocked sites</label>
-        <textarea id="blocked-sites" rows="3" spellcheck="false" placeholder="mybank.com"></textarea>
-        <p class="hint">One site per line, subdomains included. The agent can never open these.</p>
-        <label for="allowed-sites">Allowed sites</label>
-        <textarea id="allowed-sites" rows="3" spellcheck="false" placeholder="Empty: every site"></textarea>
-        <p class="hint">One site per line. When filled in, the agent can open only these.</p>
-        <p id="sites-warning" class="warning" hidden></p>
-        <label class="choice">
-          <input id="allow-file-urls" type="checkbox">
-          <span>Allow file:// URLs<small>Lets the agent open files on this computer</small></span>
-        </label>
-        <p class="hint">Saved when you leave a field; applies from the next tool call.</p>
+        <p class="hint">After changing this, press Connect again. Agent tabs already open stay where they are
+          until you close their group.</p>
       </fieldset>
     </div>
   </details>

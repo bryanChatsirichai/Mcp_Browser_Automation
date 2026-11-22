@@ -1,6 +1,6 @@
 // Text the popup shows. Kept free of DOM and chrome.* so node --test can load it.
 
-import type { ConnectionState } from "../shared/settings.js";
+import type { ConnectionState, Settings } from "../shared/settings.js";
 
 export const STATUS_COPY: Record<
   ConnectionState,
@@ -32,6 +32,18 @@ export const STATUS_COPY: Record<
     detail: "Another browser took over the relay. Press Reconnect to take it back.",
   },
 };
+
+/** One-line site policy summary for the collapsed "Site access" row: "2 blocked · all sites". */
+export function siteAccessSummary(
+  settings: Pick<Settings, "blockedSites" | "allowedSites" | "allowFileUrls">,
+): string {
+  const { blockedSites, allowedSites, allowFileUrls } = settings;
+  return [
+    blockedSites.length ? `${blockedSites.length} blocked` : "none blocked",
+    allowedSites.length ? `only ${allowedSites.length} allowed` : "all sites",
+    ...(allowFileUrls ? ["file:// on"] : []),
+  ].join(" · ");
+}
 
 /** The command that registers the relay's /mcp endpoint with Claude Code, for every project. */
 export function claudeCodeCommand(savedUrl: string): string {
