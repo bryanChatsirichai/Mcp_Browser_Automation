@@ -35,6 +35,7 @@ The agent can open, list and close tabs in its own tab group, load pages, and re
 | `tab_close` | Closes one of the agent's tabs. Refuses any other tab. |
 | `navigate` | Loads a URL in one of the agent's tabs and waits for it. Blocked sites are refused, and a page that cannot load is reported as an error. |
 | `get_page_text` | Returns the text of the page a tab is on, preferring the main content over menus. Long pages are read 50,000 characters at a time (see Beyond the guide). |
+| `computer` | Only the `screenshot` action: a JPEG of the visible part of a page, scaled so its longer edge is at most 1,568 pixels, with an optional `scale`. Returned as an image, beside the sizes as text. |
 | Later tools | Not started. See [tool-roadmap.md](tool-roadmap.md) for the build order. |
 
 ## Step by step
