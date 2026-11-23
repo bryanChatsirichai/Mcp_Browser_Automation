@@ -10,7 +10,7 @@
 //   relay     → call {id,tool}   extension → result {id, ok, data | error}   (one result per call id)
 
 /** Every tool the extension implements. Adding a name here without a handler is a compile error. */
-export type ToolName = "tabs_list" | "tab_open" | "tab_close" | "navigate" | "get_page_text";
+export type ToolName = "tabs_list" | "tab_open" | "tab_close" | "navigate" | "get_page_text" | "computer";
 
 export interface Hello {
   type: "hello";
@@ -74,4 +74,24 @@ export interface NavigateArgs {
 export interface GetPageTextArgs {
   tabId: number;
   offset?: number;
+}
+
+/** Only "screenshot" so far. */
+export interface ComputerArgs {
+  action: "screenshot";
+  tabId: number;
+  /**
+   * Shrinks the screenshot to save tokens. 0.1 to 1, default 1 (the relay rejects other values).
+   * Clicks always use full-size positions, so the model must scale them up by 1/scale before sending them to the relay.
+   */
+  scale?: number;
+}
+
+/**
+ * An image file carried as text, since JSON, the WebSocket and MCP results carry only text.
+ * In a result's `image` field, the relay sends it to the model as an image part instead of JSON text.
+ */
+export interface ToolImage {
+  data: string;
+  mimeType: string;
 }

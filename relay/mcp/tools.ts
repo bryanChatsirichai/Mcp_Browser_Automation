@@ -93,4 +93,26 @@ export const TOOLS: ToolDefinition[] = [
         .describe("Character to start from: the nextOffset of the previous call. Defaults to 0."),
     }),
   },
+  {
+    name: "computer",
+    description:
+      `Act on the page in a tab of ${GROUP}. The only action so far is screenshot: a JPEG of the visible part of the page, ` +
+      "without the browser's own toolbars, other windows or native dialogs. " +
+      "Returns { tabId, width, height, frameWidth, frameHeight } and the image. " +
+      "The frame is the page scaled so its longer edge is at most 1568 pixels; " +
+      "with scale below 1 the image is smaller, but coordinates are always given in the full frame. " +
+      "Fails with BLOCKED, CDP_ERROR for pages the browser does not let extensions read (such as the extension store), " +
+      "or NOT_IN_GROUP for any tab outside the group. " +
+      BLOCKED,
+    inputSchema: z.object({
+      action: z.enum(["screenshot"]).describe("screenshot: capture the visible part of the page."),
+      tabId: z.number().int().describe("Id of the tab, from availableTabs."),
+      scale: z
+        .number()
+        .min(0.1)
+        .max(1)
+        .optional()
+        .describe("screenshot: shrink the image by this factor to save tokens. Defaults to 1."),
+    }),
+  },
 ];

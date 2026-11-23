@@ -5,6 +5,7 @@ import { addScheme, checkUrl } from "../policy/policy.js";
 import { ToolError } from "../shared/errors.js";
 import { log } from "../shared/log.js";
 import type {
+  ComputerArgs,
   GetPageTextArgs,
   NavigateArgs,
   TabCloseArgs,
@@ -12,7 +13,7 @@ import type {
   ToolName,
 } from "../shared/protocol.js";
 import { loadSettings } from "../shared/settings.js";
-import { getPageText } from "./page.js";
+import { captureViewport, getPageText } from "./page.js";
 import {
   checkInGroup,
   closeTab,
@@ -60,6 +61,12 @@ const handlers: Record<ToolName, Handler> = {
     const { tabId, offset } = args as unknown as GetPageTextArgs;
     return { tabId, ...(await getPageText(tabId, offset)) };
   },
+
+  // action is always "screenshot": the relay's schema accepts no other action yet.
+  async computer(args) {
+    const { tabId, scale } = args as unknown as ComputerArgs;
+    return { tabId, ...(await captureViewport(tabId, scale)) };
+  },
 };
 
 /**
@@ -103,6 +110,7 @@ export async function runTool(
   }
   await checkToolCall(tool as ToolName, args);
   log(`[flow] extension -> browser: ${tool}`);
+  // Runs the tool found above
   const data = await handler(args);
   log(`[flow] browser -> extension: ${tool} done`);
   return data;
