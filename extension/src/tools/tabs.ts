@@ -132,7 +132,11 @@ async function createGroup(): Promise<chrome.tabs.Tab> {
   return tab;
 }
 
-/** Opens a blank tab in the group, creating the group first if there is none. */
+/**
+ * Opens a blank tab in the group, creating the group first if there is none.
+ * An existing group is reused in whatever window it is in, so changing tabWindow mid-session
+ * does not move new tabs: the setting applies only once the user closes the group.
+ */
 export async function openTab(): Promise<chrome.tabs.Tab> {
   const group = await findGroup();
   if (!group) {
