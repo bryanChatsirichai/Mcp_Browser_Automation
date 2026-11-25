@@ -155,6 +155,8 @@ function onTabWindowChange(input: HTMLInputElement): void {
 /**
  * Saves both site lists, or neither while any entry is not a site. Dropping a bad entry instead
  * could leave the allowed list empty, and an empty list allows every site.
+ * Unlike tabWindow, this does not disconnect: checkToolCall (tools.ts) reads the lists on every
+ * call, so a change applies from the next tool call, to tabs already open too.
  */
 async function onSitesChange(): Promise<void> {
   const blocked = parseSites(blockedSitesInput.value);
