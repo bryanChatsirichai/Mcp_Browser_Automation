@@ -136,12 +136,10 @@ export const TOOLS: ToolDefinition[] = [
           "left_click: [x, y] in the full frame, even for a screenshot taken with scale below 1. " +
             "Required for left_click.",
         ),
-      // Typing sends two CDP commands per character, so the cap keeps a call well short of the 85 s budget.
       text: z
         .string()
-        .max(5_000)
         .optional()
-        .describe("type_text: the text to type, up to 5,000 characters. Required for type_text."),
+        .describe("type_text: the text to type. Required for type_text."),
       submitKey: z
         .string()
         .optional()

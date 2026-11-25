@@ -88,7 +88,7 @@ export interface ComputerArgs {
   duration?: number;
   /** left_click: [x, y] in the full frame, whatever scale the screenshot was taken at. */
   coordinate?: [number, number];
-  /** type_text: text to type into the focused element, up to 5,000 characters. */
+  /** type_text: text to type into the focused element. */
   text?: string;
   /** type_text: keys to press after the text, in press_key's format, such as "Enter". */
   submitKey?: string;

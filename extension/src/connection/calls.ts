@@ -8,9 +8,10 @@ import type { Call, Result, ToRelay } from "../shared/protocol.js";
 import { log, shortId } from "../shared/log.js";
 import { runTool } from "../tools/tools.js";
 
-// Nested inside the relay's 90 s call timeout, which is inside the ~100 s idle limit of common
-// tunnels, so the innermost limit fires first and the model gets the most specific message.
-const CALL_BUDGET_MS = 85_000;
+// Nested inside the relay's 180 s call timeout, so the innermost limit fires first and the model
+// gets the most specific message. Longer than the ~100 s idle limit of common tunnels, so behind
+// one a call past 100 s is cut by the tunnel with a generic error instead.
+const CALL_BUDGET_MS = 120_000;
 
 // Calls run one at a time, in arrival order: two concurrent calls could otherwise each find no
 // tab group and each create one.
