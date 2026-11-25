@@ -13,6 +13,7 @@ import type {
   ToolName,
 } from "../shared/protocol.js";
 import { loadSettings } from "../shared/settings.js";
+import { leftClick } from "./input.js";
 import { captureViewport, getPageText } from "./page.js";
 import {
   checkInGroup,
@@ -62,9 +63,24 @@ const handlers: Record<ToolName, Handler> = {
     return { tabId, ...(await getPageText(tabId, offset)) };
   },
 
-  // action is always "screenshot": the relay's schema accepts no other action yet.
   async computer(args) {
-    const { tabId, scale } = args as unknown as ComputerArgs;
+    const { action, tabId, scale, duration, coordinate } = args as unknown as ComputerArgs;
+    // The relay's schema cannot make an argument required for one action alone, so the
+    // per-action arguments are checked here.
+    if (action === "left_click") {
+      if (coordinate === undefined) {
+        throw new ToolError("BAD_ARGS", "left_click needs coordinate: [x, y] in the full frame.");
+      }
+      await leftClick(tabId, coordinate);
+      return { tabId };
+    }
+    if (action === "wait") {
+      if (duration === undefined) {
+        throw new ToolError("BAD_ARGS", "wait needs duration: the seconds to pause, up to 10.");
+      }
+      await new Promise((resolve) => setTimeout(resolve, duration * 1000));
+      return { tabId };
+    }
     return { tabId, ...(await captureViewport(tabId, scale)) };
   },
 };

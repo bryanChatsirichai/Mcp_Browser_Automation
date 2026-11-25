@@ -96,16 +96,23 @@ export const TOOLS: ToolDefinition[] = [
   {
     name: "computer",
     description:
-      `Act on the page in a tab of ${GROUP}. The only action so far is screenshot: a JPEG of the visible part of the page, ` +
+      `Act on the page in a tab of ${GROUP}. screenshot: a JPEG of the visible part of the page, ` +
       "without the browser's own toolbars, other windows or native dialogs. " +
       "Returns { tabId, width, height, frameWidth, frameHeight } and the image. " +
+      "wait: pause for duration seconds (up to 10), for example while a page finishes changing; returns { tabId }. " +
+      "left_click: click at coordinate, read off a screenshot; returns { tabId }. Take a screenshot to see the result. " +
       "The frame is the page scaled so its longer edge is at most 1568 pixels; " +
       "with scale below 1 the image is smaller, but coordinates are always given in the full frame. " +
       "Fails with BLOCKED, CDP_ERROR for pages the browser does not let extensions read (such as the extension store), " +
       "or NOT_IN_GROUP for any tab outside the group. " +
       BLOCKED,
     inputSchema: z.object({
-      action: z.enum(["screenshot"]).describe("screenshot: capture the visible part of the page."),
+      action: z
+        .enum(["screenshot", "wait", "left_click"])
+        .describe(
+          "screenshot: capture the visible part of the page. wait: pause for duration seconds. " +
+            "left_click: click at coordinate.",
+        ),
       tabId: z.number().int().describe("Id of the tab, from availableTabs."),
       scale: z
         .number()
@@ -113,6 +120,19 @@ export const TOOLS: ToolDefinition[] = [
         .max(1)
         .optional()
         .describe("screenshot: shrink the image by this factor to save tokens. Defaults to 1."),
+      duration: z
+        .number()
+        .min(0)
+        .max(10)
+        .optional()
+        .describe("wait: seconds to pause, up to 10. Required for wait."),
+      coordinate: z
+        .tuple([z.number(), z.number()])
+        .optional()
+        .describe(
+          "left_click: [x, y] in the full frame, even for a screenshot taken with scale below 1. " +
+            "Required for left_click.",
+        ),
     }),
   },
 ];

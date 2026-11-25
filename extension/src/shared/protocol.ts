@@ -76,15 +76,18 @@ export interface GetPageTextArgs {
   offset?: number;
 }
 
-/** Only "screenshot" so far. */
 export interface ComputerArgs {
-  action: "screenshot";
+  action: "screenshot" | "wait" | "left_click";
   tabId: number;
   /**
    * Shrinks the screenshot to save tokens. 0.1 to 1, default 1 (the relay rejects other values).
    * Clicks always use full-size positions, so the model must scale them up by 1/scale before sending them to the relay.
    */
   scale?: number;
+  /** wait: seconds to pause, 0 to 10 (the relay rejects other values). */
+  duration?: number;
+  /** left_click: [x, y] in the full frame, whatever scale the screenshot was taken at. */
+  coordinate?: [number, number];
 }
 
 /**
