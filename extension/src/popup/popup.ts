@@ -25,7 +25,6 @@ const statusTitle = document.querySelector<HTMLParagraphElement>("#status-title"
 const statusDetail =
   document.querySelector<HTMLParagraphElement>("#status-detail")!;
 const relayHost = document.querySelector<HTMLSpanElement>("#relay-host")!;
-const startup = document.querySelector<HTMLDetailsElement>("#startup")!;
 const commandText = document.querySelector<HTMLElement>("#command")!;
 const clientCommandText =
   document.querySelector<HTMLElement>("#client-command")!;
@@ -85,8 +84,6 @@ async function start(): Promise<void> {
   commandText.textContent = command;
   document.querySelector("#version")!.textContent =
     `v${chrome.runtime.getManifest().version}`;
-  // Set once per open, not in render(), so a status change never folds it under the user.
-  startup.open = workerStatus.state !== "connected";
   render();
 }
 
