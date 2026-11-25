@@ -86,7 +86,10 @@ async function runToolCall(
     const socket = await requireExtension();
 
     // sends the call to extrnal extension, which runs it and sends back a result frame
-    log(`${tag}: sending to extension, tool ${tool} with args ${JSON.stringify(args)}`);
+    // type_text's text can be a password, so the log gets only its length.
+    // const logged = typeof args.text === "string" ? { ...args, text: `<${args.text.length} chars>` } : args;
+    // log(`${tag}: sending to extension, tool ${tool} with args ${JSON.stringify(logged)}`);
+    log(`${tag}: sending to extension, tool ${tool} with args)}`);
     const data = await sendCall(socket, id, tool, args);
 
     log(`${tag}: ok in ${Date.now() - started}ms`);

@@ -101,6 +101,9 @@ export const TOOLS: ToolDefinition[] = [
       "Returns { tabId, width, height, frameWidth, frameHeight } and the image. " +
       "wait: pause for duration seconds (up to 10), for example while a page finishes changing; returns { tabId }. " +
       "left_click: click at coordinate, read off a screenshot; returns { tabId }. Take a screenshot to see the result. " +
+      "type_text: type text where the cursor is, adding to any text already there; click the field first, " +
+      'and press "ctrl+a" first to replace its text. submitKey presses keys after it, such as "Enter"; returns { tabId }. ' +
+      'press_key: press keys or chords in order, such as "Enter", "Escape", "ctrl+a" or "Tab Tab Enter"; returns { tabId }. ' +
       "The frame is the page scaled so its longer edge is at most 1568 pixels; " +
       "with scale below 1 the image is smaller, but coordinates are always given in the full frame. " +
       "Fails with BLOCKED, CDP_ERROR for pages the browser does not let extensions read (such as the extension store), " +
@@ -108,10 +111,10 @@ export const TOOLS: ToolDefinition[] = [
       BLOCKED,
     inputSchema: z.object({
       action: z
-        .enum(["screenshot", "wait", "left_click"])
+        .enum(["screenshot", "wait", "left_click", "type_text", "press_key"])
         .describe(
           "screenshot: capture the visible part of the page. wait: pause for duration seconds. " +
-            "left_click: click at coordinate.",
+            "left_click: click at coordinate. type_text: type text where the cursor is. press_key: press keys.",
         ),
       tabId: z.number().int().describe("Id of the tab, from availableTabs."),
       scale: z
@@ -132,6 +135,24 @@ export const TOOLS: ToolDefinition[] = [
         .describe(
           "left_click: [x, y] in the full frame, even for a screenshot taken with scale below 1. " +
             "Required for left_click.",
+        ),
+      // Typing sends two CDP commands per character, so the cap keeps a call well short of the 85 s budget.
+      text: z
+        .string()
+        .max(5_000)
+        .optional()
+        .describe("type_text: the text to type, up to 5,000 characters. Required for type_text."),
+      submitKey: z
+        .string()
+        .optional()
+        .describe('type_text: keys to press after typing, in press_key\'s format, such as "Enter".'),
+      keys: z
+        .string()
+        .optional()
+        .describe(
+          'press_key: space-separated keys or chords, such as "Enter", "ctrl+a" or "Tab Tab Enter". ' +
+            "Named keys: Enter, Tab, Escape, Backspace, Delete, Space, arrow keys, Home, End, PageUp, PageDown; " +
+            "modifiers: ctrl, shift, alt, cmd. Required for press_key.",
         ),
     }),
   },

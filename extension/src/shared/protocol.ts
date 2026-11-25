@@ -77,7 +77,7 @@ export interface GetPageTextArgs {
 }
 
 export interface ComputerArgs {
-  action: "screenshot" | "wait" | "left_click";
+  action: "screenshot" | "wait" | "left_click" | "type_text" | "press_key";
   tabId: number;
   /**
    * Shrinks the screenshot to save tokens. 0.1 to 1, default 1 (the relay rejects other values).
@@ -88,6 +88,12 @@ export interface ComputerArgs {
   duration?: number;
   /** left_click: [x, y] in the full frame, whatever scale the screenshot was taken at. */
   coordinate?: [number, number];
+  /** type_text: text to type into the focused element, up to 5,000 characters. */
+  text?: string;
+  /** type_text: keys to press after the text, in press_key's format, such as "Enter". */
+  submitKey?: string;
+  /** press_key: space-separated keys or chords, such as "Enter", "ctrl+a" or "Tab Tab Enter". */
+  keys?: string;
 }
 
 /**

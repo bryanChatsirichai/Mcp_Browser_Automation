@@ -13,7 +13,7 @@ import type {
   ToolName,
 } from "../shared/protocol.js";
 import { loadSettings } from "../shared/settings.js";
-import { leftClick } from "./input.js";
+import { leftClick, pressKeys, typeText } from "./input.js";
 import { captureViewport, getPageText } from "./page.js";
 import {
   checkInGroup,
@@ -64,7 +64,8 @@ const handlers: Record<ToolName, Handler> = {
   },
 
   async computer(args) {
-    const { action, tabId, scale, duration, coordinate } = args as unknown as ComputerArgs;
+    const { action, tabId, scale, duration, coordinate, text, submitKey, keys } =
+      args as unknown as ComputerArgs;
     // The relay's schema cannot make an argument required for one action alone, so the
     // per-action arguments are checked here.
     if (action === "left_click") {
@@ -79,6 +80,20 @@ const handlers: Record<ToolName, Handler> = {
         throw new ToolError("BAD_ARGS", "wait needs duration: the seconds to pause, up to 10.");
       }
       await new Promise((resolve) => setTimeout(resolve, duration * 1000));
+      return { tabId };
+    }
+    if (action === "type_text") {
+      if (text === undefined) {
+        throw new ToolError("BAD_ARGS", "type_text needs text: the text to type where the cursor is.");
+      }
+      await typeText(tabId, text, submitKey);
+      return { tabId };
+    }
+    if (action === "press_key") {
+      if (keys === undefined) {
+        throw new ToolError("BAD_ARGS", 'press_key needs keys, such as "Enter" or "ctrl+a".');
+      }
+      await pressKeys(tabId, keys);
       return { tabId };
     }
     return { tabId, ...(await captureViewport(tabId, scale)) };
