@@ -93,4 +93,96 @@ export const TOOLS: ToolDefinition[] = [
         .describe("Character to start from: the nextOffset of the previous call. Defaults to 0."),
     }),
   },
+  {
+    name: "computer",
+    description:
+      `Act on the page in a tab of ${GROUP}. screenshot: a JPEG of the visible part of the page, ` +
+      "without the browser's own toolbars, other windows or native dialogs. " +
+      "Returns { tabId, width, height, frameWidth, frameHeight } and the image. " +
+      "wait: pause for duration seconds (up to 10), for example while a page finishes changing; returns { tabId }. " +
+      "left_click: click at coordinate, read off a screenshot; returns { tabId }. Take a screenshot to see the result. " +
+      "right_click, double_click, triple_click: the same with the right button, or two or three clicks " +
+      "(a double click selects a word, a triple click its line or paragraph); returns { tabId }. " +
+      "hover: move the mouse to coordinate without clicking, to open menus or tooltips that show on hover; " +
+      "it stays there until the next mouse action; returns { tabId }. Take a screenshot to see the result. " +
+      "type_text: type text where the cursor is, adding to any text already there; click the field first, " +
+      'and press "ctrl+a" first to replace its text. submitKey presses keys after it, such as "Enter"; returns { tabId }. ' +
+      'press_key: press keys or chords in order, such as "Enter", "Escape", "ctrl+a" or "Tab Tab Enter"; returns { tabId }. ' +
+      "scroll: turn the mouse wheel at coordinate, up, down, left or right, scrollAmount ticks at a time; " +
+      "returns { tabId }. Take a screenshot to see the result. " +
+      "The frame is the page scaled so its longer edge is at most 1568 pixels; " +
+      "with scale below 1 the image is smaller, but coordinates are always given in the full frame. " +
+      "Fails with BLOCKED, CDP_ERROR for pages the browser does not let extensions read (such as the extension store), " +
+      "or NOT_IN_GROUP for any tab outside the group. " +
+      BLOCKED,
+    inputSchema: z.object({
+      action: z
+        .enum([
+          "screenshot",
+          "wait",
+          "left_click",
+          "right_click",
+          "double_click",
+          "triple_click",
+          "hover",
+          "type_text",
+          "press_key",
+          "scroll",
+        ])
+        .describe(
+          "screenshot: capture the visible part of the page. wait: pause for duration seconds. " +
+            "left_click, right_click, double_click, triple_click: click at coordinate. " +
+            "hover: move the mouse to coordinate. " +
+            "type_text: type text where the cursor is. press_key: press keys. " +
+            "scroll: turn the mouse wheel at coordinate.",
+        ),
+      tabId: z.number().int().describe("Id of the tab, from availableTabs."),
+      scale: z
+        .number()
+        .min(0.1)
+        .max(1)
+        .optional()
+        .describe("screenshot: shrink the image by this factor to save tokens. Defaults to 1."),
+      duration: z
+        .number()
+        .min(0)
+        .max(10)
+        .optional()
+        .describe("wait: seconds to pause, up to 10. Required for wait."),
+      coordinate: z
+        .tuple([z.number(), z.number()])
+        .optional()
+        .describe(
+          "Clicks, hover and scroll: [x, y] in the full frame, even for a screenshot taken with scale below 1. " +
+            "Required for every click, hover and scroll.",
+        ),
+      text: z
+        .string()
+        .optional()
+        .describe("type_text: the text to type. Required for type_text."),
+      submitKey: z
+        .string()
+        .optional()
+        .describe('type_text: keys to press after typing, in press_key\'s format, such as "Enter".'),
+      keys: z
+        .string()
+        .optional()
+        .describe(
+          'press_key: space-separated keys or chords, such as "Enter", "ctrl+a" or "Tab Tab Enter". ' +
+            "Named keys: Enter, Tab, Escape, Backspace, Delete, Space, arrow keys, Home, End, PageUp, PageDown; " +
+            "modifiers: ctrl, shift, alt, cmd. Required for press_key.",
+        ),
+      scrollDirection: z
+        .enum(["up", "down", "left", "right"])
+        .optional()
+        .describe("scroll: which way to turn the wheel. Required for scroll."),
+      scrollAmount: z
+        .number()
+        .int()
+        .min(1)
+        .max(10)
+        .optional()
+        .describe("scroll: ticks to scroll, 1 to 10. Defaults to 3."),
+    }),
+  },
 ];

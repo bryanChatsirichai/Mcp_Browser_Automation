@@ -25,7 +25,6 @@ const statusTitle = document.querySelector<HTMLParagraphElement>("#status-title"
 const statusDetail =
   document.querySelector<HTMLParagraphElement>("#status-detail")!;
 const relayHost = document.querySelector<HTMLSpanElement>("#relay-host")!;
-const startup = document.querySelector<HTMLDetailsElement>("#startup")!;
 const commandText = document.querySelector<HTMLElement>("#command")!;
 const clientCommandText =
   document.querySelector<HTMLElement>("#client-command")!;
@@ -85,8 +84,6 @@ async function start(): Promise<void> {
   commandText.textContent = command;
   document.querySelector("#version")!.textContent =
     `v${chrome.runtime.getManifest().version}`;
-  // Set once per open, not in render(), so a status change never folds it under the user.
-  startup.open = workerStatus.state !== "connected";
   render();
 }
 
@@ -158,6 +155,8 @@ function onTabWindowChange(input: HTMLInputElement): void {
 /**
  * Saves both site lists, or neither while any entry is not a site. Dropping a bad entry instead
  * could leave the allowed list empty, and an empty list allows every site.
+ * Unlike tabWindow, this does not disconnect: checkToolCall (tools.ts) reads the lists on every
+ * call, so a change applies from the next tool call, to tabs already open too.
  */
 async function onSitesChange(): Promise<void> {
   const blocked = parseSites(blockedSitesInput.value);

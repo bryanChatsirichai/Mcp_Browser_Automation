@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/server";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
-import type { ToolName } from "../../extension/src/shared/protocol.ts";
+import type { ToolImage, ToolName } from "../../extension/src/shared/protocol.ts";
 import { ExtensionError, sendCall } from "../ext/calls.ts";
 import { requireExtension } from "../ext/socket.ts";
 import { fence } from "../relay-lib.ts";
@@ -86,15 +86,25 @@ async function runToolCall(
     const socket = await requireExtension();
 
     // sends the call to extrnal extension, which runs it and sends back a result frame
-    log(`${tag}: sending to extension, tool ${tool} with args ${JSON.stringify(args)}`);
+    // type_text's text can be a password, so the log gets only its length.
+    // const logged = typeof args.text === "string" ? { ...args, text: `<${args.text.length} chars>` } : args;
+    // log(`${tag}: sending to extension, tool ${tool} with args ${JSON.stringify(logged)}`);
+    log(`${tag}: sending to extension, tool ${tool} with args)}`);
     const data = await sendCall(socket, id, tool, args);
-    
+
     log(`${tag}: ok in ${Date.now() - started}ms`);
-    // the relay does not know what the tool did, so it just returns the data to the MCP client
-    log(`${tag}: result ${JSON.stringify(data, null, 2)}`);
+    // the relay does not know what the tool did, so it just returns the data to the MCP client.
+    // An `image` field (ToolImage) becomes an image part, so base64 never reaches the text or the log.
+    const { image, ...rest } = data as { image?: ToolImage };
+    // log(`${tag}: result ${JSON.stringify(rest, null, 2)}`);
+
     log(`[flow] relay -> agent: call ${shortId(id)} ok in ${Date.now() - started}ms`);
+    
     return {
-      content: [{ type: "text", text: fence(JSON.stringify(data, null, 2)) }],
+      content: [
+        { type: "text", text: fence(JSON.stringify(rest, null, 2)) },
+        ...(image ? [{ type: "image" as const, data: image.data, mimeType: image.mimeType }] : []),
+      ],
     };
   } catch (error) {
     const known =

@@ -14,8 +14,8 @@ import type {
 } from "../../extension/src/shared/protocol.ts";
 import { log, shortId } from "../log.ts";
 
-/** Longer than the extension's own 85 s budget, so its more specific timeout message wins. */
-const CALL_TIMEOUT_MS = 90_000;
+/** Longer than the extension's own 120 s budget, so its more specific timeout message wins. */
+const CALL_TIMEOUT_MS = 180_000;
 
 export class ExtensionError extends Error {
   /** Short upper-case id such as NO_EXTENSION or TIMEOUT, shown to the model as `Error <code>`. */

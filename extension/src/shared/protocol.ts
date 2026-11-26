@@ -10,7 +10,7 @@
 //   relay     → call {id,tool}   extension → result {id, ok, data | error}   (one result per call id)
 
 /** Every tool the extension implements. Adding a name here without a handler is a compile error. */
-export type ToolName = "tabs_list" | "tab_open" | "tab_close" | "navigate" | "get_page_text";
+export type ToolName = "tabs_list" | "tab_open" | "tab_close" | "navigate" | "get_page_text" | "computer";
 
 export interface Hello {
   type: "hello";
@@ -74,4 +74,47 @@ export interface NavigateArgs {
 export interface GetPageTextArgs {
   tabId: number;
   offset?: number;
+}
+
+export interface ComputerArgs {
+  action:
+    | "screenshot"
+    | "wait"
+    | "left_click"
+    | "right_click"
+    | "double_click"
+    | "triple_click"
+    | "hover"
+    | "type_text"
+    | "press_key"
+    | "scroll";
+  tabId: number;
+  /**
+   * Shrinks the screenshot to save tokens. 0.1 to 1, default 1 (the relay rejects other values).
+   * Clicks always use full-size positions, so the model must scale them up by 1/scale before sending them to the relay.
+   */
+  scale?: number;
+  /** wait: seconds to pause, 0 to 10 (the relay rejects other values). */
+  duration?: number;
+  /** Clicks, hover and scroll: [x, y] in the full frame, whatever scale the screenshot was taken at. */
+  coordinate?: [number, number];
+  /** type_text: text to type into the focused element. */
+  text?: string;
+  /** type_text: keys to press after the text, in press_key's format, such as "Enter". */
+  submitKey?: string;
+  /** press_key: space-separated keys or chords, such as "Enter", "ctrl+a" or "Tab Tab Enter". */
+  keys?: string;
+  /** scroll: direction to turn the mouse wheel at coordinate. */
+  scrollDirection?: "up" | "down" | "left" | "right";
+  /** scroll: ticks to scroll, 1 to 10 (the relay rejects other values). Defaults to 3. */
+  scrollAmount?: number;
+}
+
+/**
+ * An image file carried as text, since JSON, the WebSocket and MCP results carry only text.
+ * In a result's `image` field, the relay sends it to the model as an image part instead of JSON text.
+ */
+export interface ToolImage {
+  data: string;
+  mimeType: string;
 }
