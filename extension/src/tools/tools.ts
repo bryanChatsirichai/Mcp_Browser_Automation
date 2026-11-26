@@ -13,7 +13,7 @@ import type {
   ToolName,
 } from "../shared/protocol.js";
 import { loadSettings } from "../shared/settings.js";
-import { leftClick, pressKeys, typeText } from "./input.js";
+import { click, hover, pressKeys, scroll, typeText } from "./input.js";
 import { captureViewport, getPageText } from "./page.js";
 import {
   checkInGroup,
@@ -64,36 +64,89 @@ const handlers: Record<ToolName, Handler> = {
   },
 
   async computer(args) {
-    const { action, tabId, scale, duration, coordinate, text, submitKey, keys } =
-      args as unknown as ComputerArgs;
+    const {
+      action,
+      tabId,
+      scale,
+      duration,
+      coordinate,
+      text,
+      submitKey,
+      keys,
+      scrollDirection,
+      scrollAmount,
+    } = args as unknown as ComputerArgs;
     // The relay's schema cannot make an argument required for one action alone, so the
     // per-action arguments are checked here.
-    if (action === "left_click") {
+    if (
+      action === "left_click" ||
+      action === "right_click" ||
+      action === "double_click" ||
+      action === "triple_click"
+    ) {
       if (coordinate === undefined) {
-        throw new ToolError("BAD_ARGS", "left_click needs coordinate: [x, y] in the full frame.");
+        throw new ToolError(
+          "BAD_ARGS",
+          `${action} needs coordinate: [x, y] in the full frame.`,
+        );
       }
-      await leftClick(tabId, coordinate);
+      await click(tabId, coordinate, action);
+      return { tabId };
+    }
+    if (action === "hover") {
+      if (coordinate === undefined) {
+        throw new ToolError(
+          "BAD_ARGS",
+          "hover needs coordinate: [x, y] in the full frame.",
+        );
+      }
+      await hover(tabId, coordinate);
       return { tabId };
     }
     if (action === "wait") {
       if (duration === undefined) {
-        throw new ToolError("BAD_ARGS", "wait needs duration: the seconds to pause, up to 10.");
+        throw new ToolError(
+          "BAD_ARGS",
+          "wait needs duration: the seconds to pause, up to 10.",
+        );
       }
       await new Promise((resolve) => setTimeout(resolve, duration * 1000));
       return { tabId };
     }
     if (action === "type_text") {
       if (text === undefined) {
-        throw new ToolError("BAD_ARGS", "type_text needs text: the text to type where the cursor is.");
+        throw new ToolError(
+          "BAD_ARGS",
+          "type_text needs text: the text to type where the cursor is.",
+        );
       }
       await typeText(tabId, text, submitKey);
       return { tabId };
     }
     if (action === "press_key") {
       if (keys === undefined) {
-        throw new ToolError("BAD_ARGS", 'press_key needs keys, such as "Enter" or "ctrl+a".');
+        throw new ToolError(
+          "BAD_ARGS",
+          'press_key needs keys, such as "Enter" or "ctrl+a".',
+        );
       }
       await pressKeys(tabId, keys);
+      return { tabId };
+    }
+    if (action === "scroll") {
+      if (coordinate === undefined) {
+        throw new ToolError(
+          "BAD_ARGS",
+          "scroll needs coordinate: [x, y] in the full frame, the point to scroll from.",
+        );
+      }
+      if (scrollDirection === undefined) {
+        throw new ToolError(
+          "BAD_ARGS",
+          'scroll needs scrollDirection: "up", "down", "left" or "right".',
+        );
+      }
+      await scroll(tabId, coordinate, scrollDirection, scrollAmount ?? 3);
       return { tabId };
     }
     return { tabId, ...(await captureViewport(tabId, scale)) };
@@ -105,7 +158,10 @@ const handlers: Record<ToolName, Handler> = {
  * group (NOT_IN_GROUP) and a URL the site policy blocks (BLOCKED), either the URL navigate
  * loads or the page the tab is on now.
  */
-async function checkToolCall(tool: ToolName, args: Record<string, unknown>): Promise<void> {
+async function checkToolCall(
+  tool: ToolName,
+  args: Record<string, unknown>,
+): Promise<void> {
   const settings = await loadSettings();
 
   // navigate: check where the tab is going. It names the URL, so it can be checked before loading.

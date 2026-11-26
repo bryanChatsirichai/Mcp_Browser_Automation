@@ -77,7 +77,17 @@ export interface GetPageTextArgs {
 }
 
 export interface ComputerArgs {
-  action: "screenshot" | "wait" | "left_click" | "type_text" | "press_key";
+  action:
+    | "screenshot"
+    | "wait"
+    | "left_click"
+    | "right_click"
+    | "double_click"
+    | "triple_click"
+    | "hover"
+    | "type_text"
+    | "press_key"
+    | "scroll";
   tabId: number;
   /**
    * Shrinks the screenshot to save tokens. 0.1 to 1, default 1 (the relay rejects other values).
@@ -86,7 +96,7 @@ export interface ComputerArgs {
   scale?: number;
   /** wait: seconds to pause, 0 to 10 (the relay rejects other values). */
   duration?: number;
-  /** left_click: [x, y] in the full frame, whatever scale the screenshot was taken at. */
+  /** Clicks, hover and scroll: [x, y] in the full frame, whatever scale the screenshot was taken at. */
   coordinate?: [number, number];
   /** type_text: text to type into the focused element. */
   text?: string;
@@ -94,6 +104,10 @@ export interface ComputerArgs {
   submitKey?: string;
   /** press_key: space-separated keys or chords, such as "Enter", "ctrl+a" or "Tab Tab Enter". */
   keys?: string;
+  /** scroll: direction to turn the mouse wheel at coordinate. */
+  scrollDirection?: "up" | "down" | "left" | "right";
+  /** scroll: ticks to scroll, 1 to 10 (the relay rejects other values). Defaults to 3. */
+  scrollAmount?: number;
 }
 
 /**

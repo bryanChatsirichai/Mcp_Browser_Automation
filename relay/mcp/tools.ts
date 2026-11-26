@@ -101,9 +101,15 @@ export const TOOLS: ToolDefinition[] = [
       "Returns { tabId, width, height, frameWidth, frameHeight } and the image. " +
       "wait: pause for duration seconds (up to 10), for example while a page finishes changing; returns { tabId }. " +
       "left_click: click at coordinate, read off a screenshot; returns { tabId }. Take a screenshot to see the result. " +
+      "right_click, double_click, triple_click: the same with the right button, or two or three clicks " +
+      "(a double click selects a word, a triple click its line or paragraph); returns { tabId }. " +
+      "hover: move the mouse to coordinate without clicking, to open menus or tooltips that show on hover; " +
+      "it stays there until the next mouse action; returns { tabId }. Take a screenshot to see the result. " +
       "type_text: type text where the cursor is, adding to any text already there; click the field first, " +
       'and press "ctrl+a" first to replace its text. submitKey presses keys after it, such as "Enter"; returns { tabId }. ' +
       'press_key: press keys or chords in order, such as "Enter", "Escape", "ctrl+a" or "Tab Tab Enter"; returns { tabId }. ' +
+      "scroll: turn the mouse wheel at coordinate, up, down, left or right, scrollAmount ticks at a time; " +
+      "returns { tabId }. Take a screenshot to see the result. " +
       "The frame is the page scaled so its longer edge is at most 1568 pixels; " +
       "with scale below 1 the image is smaller, but coordinates are always given in the full frame. " +
       "Fails with BLOCKED, CDP_ERROR for pages the browser does not let extensions read (such as the extension store), " +
@@ -111,10 +117,24 @@ export const TOOLS: ToolDefinition[] = [
       BLOCKED,
     inputSchema: z.object({
       action: z
-        .enum(["screenshot", "wait", "left_click", "type_text", "press_key"])
+        .enum([
+          "screenshot",
+          "wait",
+          "left_click",
+          "right_click",
+          "double_click",
+          "triple_click",
+          "hover",
+          "type_text",
+          "press_key",
+          "scroll",
+        ])
         .describe(
           "screenshot: capture the visible part of the page. wait: pause for duration seconds. " +
-            "left_click: click at coordinate. type_text: type text where the cursor is. press_key: press keys.",
+            "left_click, right_click, double_click, triple_click: click at coordinate. " +
+            "hover: move the mouse to coordinate. " +
+            "type_text: type text where the cursor is. press_key: press keys. " +
+            "scroll: turn the mouse wheel at coordinate.",
         ),
       tabId: z.number().int().describe("Id of the tab, from availableTabs."),
       scale: z
@@ -133,8 +153,8 @@ export const TOOLS: ToolDefinition[] = [
         .tuple([z.number(), z.number()])
         .optional()
         .describe(
-          "left_click: [x, y] in the full frame, even for a screenshot taken with scale below 1. " +
-            "Required for left_click.",
+          "Clicks, hover and scroll: [x, y] in the full frame, even for a screenshot taken with scale below 1. " +
+            "Required for every click, hover and scroll.",
         ),
       text: z
         .string()
@@ -152,6 +172,17 @@ export const TOOLS: ToolDefinition[] = [
             "Named keys: Enter, Tab, Escape, Backspace, Delete, Space, arrow keys, Home, End, PageUp, PageDown; " +
             "modifiers: ctrl, shift, alt, cmd. Required for press_key.",
         ),
+      scrollDirection: z
+        .enum(["up", "down", "left", "right"])
+        .optional()
+        .describe("scroll: which way to turn the wheel. Required for scroll."),
+      scrollAmount: z
+        .number()
+        .int()
+        .min(1)
+        .max(10)
+        .optional()
+        .describe("scroll: ticks to scroll, 1 to 10. Defaults to 3."),
     }),
   },
 ];
